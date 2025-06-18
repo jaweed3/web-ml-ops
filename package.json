@@ -1,0 +1,9 @@
+{
+    "name": "ml-prediction-app",
+    "version": "1.0.0",
+    "description": "Full-Stack ML Prediction Pipeline",
+    "scripts": {
+        "dev": "concurrently \"npm run dev:backend\" \"npom run dev:frontend\"",
+        ""
+    }
+}
