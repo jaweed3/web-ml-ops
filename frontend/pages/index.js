@@ -1,5 +1,14 @@
-import { use, useEffect, useState } from "react";
-import { fetchAndSetAll, fetchJson } from "./api/fetch-helper";
+import { useState } from "react";
+import API_BASE_URL from "@/src/api";
+
+export const fetchJson = async (url, init = {}) => {
+    const res = await fetch(url, init);
+    if (!res.ok) {
+        throw new Error(`${res.status}: ${await res.text()}`);
+    }
+    return res.json();
+};
+
 
 export default function Home() {
   const initialValues = {
@@ -33,10 +42,8 @@ export default function Home() {
     setError(null); // reset error sebelumnya
 
     try {
-      // endpoint API
-      const API_URL = "";
 
-      const responseData = await fetchJson(API_URL, {
+      const responseData = await fetchJson(`${API_BASE_URL}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
