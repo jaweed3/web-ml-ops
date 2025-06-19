@@ -9,7 +9,7 @@ app = Flask(__name__)
 CORS(app=app)
 
 # Logging Configuration
-app.logger.setLevel(logging.INFO)
+app.logger.setLevel(logging.DEBUG)
 handler = logging.StreamHandler()
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 handler.setFormatter(formatter)
