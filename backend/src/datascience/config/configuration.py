@@ -2,7 +2,7 @@ from src.datascience.constant import *
 from src.datascience.utils.common import read_yaml, create_directories
 from src.datascience.entity.config_entity import (DataIngestionConfig, DataValidationConfig,
                                                   DataTransformationConfig, ModelTrainerConfig,
-                                                  ModelEvaluationConfig)
+                                                  ModelEvaluationConfig, PredictionConfig)
 
 class ConfigurationManager:
     def __init__(self,
@@ -89,3 +89,15 @@ class ConfigurationManager:
         )
 
         return model_evaluation_config
+    
+    def get_prediction_config(self) -> PredictionConfig:
+        config = self.config.model_path
+
+        create_directories([config.root_dir])
+
+        prediction_config = PredictionConfig(
+            model_path=config.model_path,
+            expected_features=config.expected_features
+        )
+
+        return prediction_config

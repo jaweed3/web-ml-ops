@@ -42,3 +42,8 @@ class ModelEvaluationConfig:
     metric_file_name: Path
     target_column: str
     mlflow_uri: str
+
+@dataclass
+class PredictionConfig:
+    model_path: Path
+    expected_features: int
