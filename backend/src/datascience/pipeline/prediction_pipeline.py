@@ -3,12 +3,17 @@ import os
 import numpy as np
 import pandas as pd
 import logging
-import mlflow
+from dotenv import load_dotenv
+import dagshub
 from mlflow.pyfunc import load_model
 from mlflow.tracking import MlflowClient
 from pathlib import Path
 from src.datascience.entity.config_entity import PredictionConfig
 
+env_path = Path(__file__).parents[3] / ".env"
+load_dotenv(env_path)
+dagshub_repo_name = os.environ.get("DAGSHUB_REPO_NAME")
+dagshub_owner_name = os.environ.get("DAGSHUB_REPO_OWNER")
 
 logger = logging.getLogger(__name__)
 
@@ -23,19 +28,19 @@ class PredictionPipeline:
         logger.info(f"[DEBUG] Looking for local model at: {os.path.join(cwd, self.config.model_path)}")
         if getattr(self.config, "mlflow_model_name", None):
             try:
-                if uri := getattr(self.config, "mlflow_tracking_uri", None):
-                    mlflow.set_tracking_uri(uri)
-                    logger.info(f"MLflow tracking URI set to: {uri}")
-
+                dagshub.init(repo_owner=dagshub_owner_name, repo_name=dagshub_repo_name, mlflow=True)
                 logger.info(f"attempting to load model from MLflow Registry. => {self.config.mlflow_model_name}")
                 client = MlflowClient()
-                latest = client.get_latest_versions(self.config.mlflow_model_name)
-                if latest:
-                    version = getattr(self.config, "mlflow_model_version", None) or latest[-1].version
-                    logger.info(f"Found version {version}. Loading from remote Registry")
-                    return load_model(model_uri=f"models:/{self.config.mlflow_model_name}")
+                filter_string = f"name='{self.config.mlflow_model_name}'"
+                results = client.search_model_versions(filter_string)
+
+                if results:
+                    latest_version_obj = max(results,key=lambda x: int(x.version))
+                    version = latest_version_obj.version
+                    logger.info(f"Found version {version}.loading from remote repository!")
+                    return load_model(model_uri=f"models:/{self.config.mlflow_model_name}/{version}")
                 else:
-                    logger.warning(f"Model {self.config.mlflow_model_name} is Not Found!")
+                    logger.warning(f"Model {self.config.mlflow_model_name} not found in registry!")
             except Exception as e:
                 logger.error(f"failed to connect to MLflow Registry: {str(e)}. Switching to local model fallback.")
 
