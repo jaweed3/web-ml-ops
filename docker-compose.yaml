@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "8080:8080"
+    env_file:
+      - ./backend/.env
+    environment:
+      - MLFLOW_TRACKING_URI=${MLFLOW_TRACKING_URI}
+      - MLFLOW_TRACKING_USERNAME=${MLFLOW_TRACKING_USERNAME}
+      - MLFLOW_TRACKING_PASSWORD=${MLFLOW_TRACKING_PASSWORD}
+    networks:
+      - ml-network
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost.8080
+    depends_on:
+      - backend
+    networks:
+      - ml-network
+
+networks:
+  ml-network:
+    driver: bridge
