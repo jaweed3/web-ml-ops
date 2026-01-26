@@ -1,3 +1,5 @@
+dagshub
+gunicorn
 pandas
 mlflow
 notebook

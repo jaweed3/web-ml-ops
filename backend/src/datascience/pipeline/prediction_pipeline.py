@@ -10,10 +10,15 @@ from mlflow.tracking import MlflowClient
 from pathlib import Path
 from src.datascience.entity.config_entity import PredictionConfig
 
-env_path = Path(__file__).parents[3] / ".env"
-load_dotenv(env_path)
+env_path = Path(__file__).resolve().parent.parent.parent / ".env"
+if env_path.exists():
+    load_dotenv(env_path)
+
 dagshub_repo_name = os.environ.get("DAGSHUB_REPO_NAME")
 dagshub_owner_name = os.environ.get("DAGSHUB_REPO_OWNER")
+
+if not dagshub_owner_name or not dagshub_repo_name:
+    logger.warning("DAGSHUB_REPO_NAME or OWNER not net via Env Vars. Dagshub init.")
 
 logger = logging.getLogger(__name__)
 
