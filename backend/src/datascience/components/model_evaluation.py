@@ -4,6 +4,7 @@ import mlflow
 import mlflow.sklearn
 import numpy as np
 import joblib
+import dagshub
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 from urllib.parse import urlparse
 from src.datascience.entity.config_entity import ModelEvaluationConfig
@@ -17,6 +18,7 @@ os.environ["MLFLOW_TRACKING_PASSWORD"] = "0933f50842e73c4bd68fffd52850326b068782
 class ModelEvaluation:
     def __init__(self, config: ModelEvaluationConfig):
         self.config = config
+        dagshub.init(repo_owner='jaweed3', repo_name='datascience', mlflow=True)
 
     def eval_metrics(self, actual, pred):
         rmse = np.sqrt(mean_squared_error(actual, pred))
