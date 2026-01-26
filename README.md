@@ -140,22 +140,3 @@ This project is configured with **GitHub Actions**.
 
 **Fatih Jawwad** - *Machine Learning Engineer*
 
-```
-
-***
-
-### Langkah Terakhir (Wajib):
-
-Agar README di atas valid, kamu harus membuat file `.env.example` di root folder kamu sekarang. Isinya cuma kerangka variabel tanpa password asli:
-
-**File: `.env.example`**
-```env
-MLFLOW_TRACKING_URI=https://dagshub.com/username/repo.mlflow
-MLFLOW_TRACKING_USERNAME=your_username
-MLFLOW_TRACKING_PASSWORD=your_password
-DAGSHUB_REPO_OWNER=username
-DAGSHUB_REPO_NAME=repo_name
-DAGSHUB_USER_TOKEN=your_access_token
-
-```
-
