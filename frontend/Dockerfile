@@ -12,7 +12,7 @@ WORKDIR /app
 ENV NODE_ENV production
 
 RUN addgroup --system --gid 1001 nodejs
-RUN addgroup --system --uid 1001 nextjs
+RUN adduser --system --uid 1001 nextjs
 
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
@@ -23,4 +23,4 @@ USER nextjs
 EXPOSE 3000
 ENV PORT 3000
 
-CMD ["node", "serrver.js"]
+CMD ["node", "server.js"]
