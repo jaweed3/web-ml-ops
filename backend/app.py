@@ -1,9 +1,13 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, request, jsonify
 from flask_cors import CORS
+from dotenv import load_dotenv
 import os
 import numpy as np
 import logging
+
+from pydantic import BaseModel
 from src.datascience.pipeline.prediction_pipeline import PredictionPipeline
+from src.datascience.entity.config_entity import PredictionConfig
 
 app = Flask(__name__)
 CORS(app=app)
@@ -13,6 +17,27 @@ app.logger.setLevel(logging.DEBUG)
 handler = logging.StreamHandler()
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 handler.setFormatter(formatter)
+
+load_dotenv()
+
+config = PredictionConfig(
+    model_path="artifacts/model_trainer/model.joblib",
+    mlflow_model_name="ElasticNetModel", 
+    mlflow_model_version=None,
+    expected_features=8,
+    feature_names=["Pregnancies", "Glucose", "BloodPressure", "SkinThickness",
+                   "Insulin", "BMI", "DiabetesPedigreeFunction", "Age"]
+)
+
+class PredictRequest(BaseModel):
+    Pregnancies: float
+    Glucose: float
+    BloodPressure: float
+    SkinThickness: float
+    Insulin: float
+    BMI: float
+    DiabetesPedigree: float
+    Age: float
 
 if not app.logger.handlers:
     app.logger.addHandler(handler)
@@ -70,7 +95,8 @@ def predict_data():
         input_data = np.array([Pregnancies, Glucose, BloodPressure, SkinThickness, Insulin,
                 BMI, DiabetesPedigree, Age]).reshape(1, -1)
         
-        obj = PredictionPipeline()
+
+        obj = PredictionPipeline(config=config)
         prediction_result = obj.predict(input_data)
         
         app.logger.info(f"Prediction Successful. result: {prediction_result}")

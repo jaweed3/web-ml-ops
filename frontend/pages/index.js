@@ -50,7 +50,7 @@ export default function Home() {
 
     try {
       // endpoint API
-      const API_URL = "http://localhost:8080/predict";
+      const API_URL = "http://localhost:8000/predict";
 
       const responseData = await fetchJson(API_URL, {
         method: 'POST',
@@ -83,7 +83,7 @@ export default function Home() {
     setTrainingError(null);
 
     try {
-      const API_URL = "http://localhost:8080/train";
+      const API_URL = "http://localhost:8000/train";
       const responseData = await fetchJson(API_URL, {
         method: 'GET'
       });

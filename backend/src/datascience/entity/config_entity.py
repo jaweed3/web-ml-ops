@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from pathlib import Path
+from typing import List
 from src.datascience.constant import *
 from src.datascience.utils.common import read_yaml, create_directories
 
@@ -45,5 +46,8 @@ class ModelEvaluationConfig:
 
 @dataclass
 class PredictionConfig:
-    model_path: Path
-    expected_features: int
+    model_path: str = None
+    mlflow_model_name: str = None
+    mlflow_model_version: int = None
+    expected_features: int = 8
+    feature_names: List[str] = None
