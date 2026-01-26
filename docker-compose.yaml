@@ -4,13 +4,16 @@ services:
   backend:
     build: ./backend
     ports:
-      - "8080:8080"
+      - "8000:8000"
     env_file:
       - ./backend/.env
     environment:
       - MLFLOW_TRACKING_URI=${MLFLOW_TRACKING_URI}
       - MLFLOW_TRACKING_USERNAME=${MLFLOW_TRACKING_USERNAME}
       - MLFLOW_TRACKING_PASSWORD=${MLFLOW_TRACKING_PASSWORD}
+      - DAGSHUB_REPO_OWNER=${DAGSHUB_REPO_OWNER}
+      - DAGSHUB_REPO_NAME=${DAGSHUB_REPO_NAME}
+      - DAGSHUB_USER_TOKEN=${DAGSHUB_USER_TOKEN}
     networks:
       - ml-network
 
