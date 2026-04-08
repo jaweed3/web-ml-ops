@@ -1,0 +1,44 @@
+import logging
+import json
+import sys
+from datetime import datetime, timezone
+
+
+class JSONFormatter(logging.Formatter):
+    def format(self, record: logging.LogRecord) -> str:
+        base = {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "level": record.levelname,
+            "logger": record.name,
+            "event": record.getMessage(),
+        }
+        if hasattr(record, "extra"):
+            base.update(record.extra)
+        return json.dumps(base)
+
+
+class StructuredLogger(logging.Logger):
+    def _log_structured(self, level, event, **kwargs):
+        record = self.makeRecord(self.name, level, "", 0, event, (), None)
+        record.extra = kwargs
+        self.handle(record)
+
+    def info(self, event, **kwargs):
+        self._log_structured(logging.INFO, event, **kwargs)
+
+    def warning(self, event, **kwargs):
+        self._log_structured(logging.WARNING, event, **kwargs)
+
+    def error(self, event, **kwargs):
+        self._log_structured(logging.ERROR, event, **kwargs)
+
+
+def get_logger(name: str) -> StructuredLogger:
+    logging.setLoggerClass(StructuredLogger)
+    logger = logging.getLogger(name)
+    if not logger.handlers:
+        handler = logging.StreamHandler(sys.stdout)
+        handler.setFormatter(JSONFormatter())
+        logger.addHandler(handler)
+        logger.setLevel(logging.INFO)
+    return logger

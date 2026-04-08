@@ -1,0 +1,69 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "rescuevision-mlops"
+version = "2.0.0"
+description = "End-to-end MLOps pipeline for RescueVision SAR victim detection"
+requires-python = ">=3.10"
+readme = "README.md"
+
+# ── Ruff (linting + formatting) ───────────────────────────────────────────────
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "B",    # flake8-bugbear
+    "UP",   # pyupgrade
+    "N",    # pep8-naming
+    "RUF",  # ruff-specific
+]
+ignore = [
+    "B008",  # do not perform function call in default arguments (FastAPI pattern)
+    "N803",  # argument name should be lowercase (some ML conventions use uppercase)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101"]   # allow assert in tests
+"research/*" = ["E402", "F401"]  # notebooks have non-top imports
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+# ── Mypy (type checking) ─────────────────────────────────────────────────────
+[tool.mypy]
+python_version = "3.10"
+strict = false
+ignore_missing_imports = true
+exclude = ["research/", ".venv/"]
+
+# Enforce these even in non-strict mode
+disallow_untyped_defs = true
+warn_return_any = true
+warn_unused_ignores = true
+
+# ── Pytest ────────────────────────────────────────────────────────────────────
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v --tb=short"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]
+
+# ── Coverage ──────────────────────────────────────────────────────────────────
+[tool.coverage.run]
+source = ["pipeline", "core", "app"]
+omit = ["*/__pycache__/*", "*/research/*", ".venv/*"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
+fail_under = 60
