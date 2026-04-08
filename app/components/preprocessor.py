@@ -58,6 +58,8 @@ class ImagePreprocessor:
     # ── private ───────────────────────────────────────────────────────────────
 
     def _decode(self, data: bytes) -> np.ndarray:
+        if not data:
+            raise ValueError("Could not decode image — unsupported format or corrupt file")
         arr = np.frombuffer(data, np.uint8)
         img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
         if img is None:
