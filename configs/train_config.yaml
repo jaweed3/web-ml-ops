@@ -1,0 +1,13 @@
+data:
+  dir: data/coco_person
+  yaml: data/coco_person/dataset.yaml
+
+model:
+  name: yolov8n.pt
+
+train:
+  epochs: 50
+  imgsz: 640
+  batch: 16
+  lr0: 0.01
+  optimizer: AdamW

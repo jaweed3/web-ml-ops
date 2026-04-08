@@ -1,0 +1,25 @@
+dagshub:
+  username: ""
+  repo: ""
+  token: ""
+
+model:
+  name: rescuevision-onnx-int8
+  version: latest
+  format: onnx_int8
+
+inference:
+  imgsz: 640
+  conf_threshold: 0.25
+  iou_threshold: 0.45
+  max_detections: 100
+  n_threads: 2
+
+server:
+  host: 0.0.0.0
+  port: 8080
+  workers: 1
+  max_file_size_mb: 10
+
+cache:
+  model_dir: /tmp/rescuevision_model
