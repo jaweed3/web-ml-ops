@@ -29,12 +29,18 @@ Level 4 — Smoke test (requires running server)
 ## Prerequisites
 
 ```bash
-pip install -r requirements.txt
+make install   # base deps — cukup untuk Level 1, 2, dan sebagian Level 3
 ```
 
-Level 1 dan 2 tidak butuh DagsHub, model weights, atau server yang running.  
-Level 3 butuh dataset sudah di-pull dan pipeline sudah dijalankan.  
-Level 4 butuh `make up` sudah jalan.
+Level 3 tests yang butuh ultralytics/tensorflow di-**skip otomatis** kalau package tidak terinstall — tidak error, hanya `SKIPPED`.
+
+| Level | Deps | Laptop i3 | Mac Mini M4 | RTX 4060 lab |
+|---|---|---|---|---|
+| 1 — Unit | base | ✅ | ✅ | ✅ |
+| 2 — API | base | ✅ | ✅ | ✅ |
+| 3 — Pipeline (data, export, benchmark, register) | base + artifacts | ⚠️ bisa kalau artifacts dicopy | ✅ | ✅ |
+| 3 — Pipeline (train) | install-train | ❌ | ✅ (MPS) | ✅ (CUDA) |
+| 4 — Smoke | base + server running | ✅ | ✅ | ✅ |
 
 ---
 
@@ -168,67 +174,104 @@ export $(cat .env | xargs)
 # Pull dataset
 dvc pull
 
-# Jalankan pipeline sampai stage yang relevan
-make data      # untuk test_data.py
-make all       # untuk test_export.py dan test_benchmark.py
+# Jalankan full pipeline
+make all
 ```
 
 ---
 
-### Dataset integrity test
+### test_data.py — Dataset integrity
 
 ```bash
 pytest tests/test_data.py -v
 ```
 
 **Yang di-test:**
-- `data/coco_person/images/train/` ada
-- `data/coco_person/images/val/` ada
-- `data/coco_person/labels/train/` ada
-- `data/coco_person/labels/val/` ada
+- Required dirs ada (`images/train`, `images/val`, `labels/train`, `labels/val`)
+- Training dan val set tidak kosong
 - Jumlah image = jumlah label (tidak ada orphaned annotation)
-- Training set tidak kosong
+- Setiap image punya label yang matching (berdasarkan stem)
+- Format YOLO valid: 5 field, semua float, coords dalam `[0, 1]`
+- Semua annotation class id = 0 (person only)
+- Spot-check 20 random image untuk korupsi via PIL
 
-Kalau test ini fail setelah `dvc pull`, kemungkinan:
-1. Credentials salah → cek `DAGSHUB_TOKEN`
-2. DVC remote belum di-setup → lihat [setup.md](setup.md)
-3. Dataset belum pernah di-push ke remote
+Kalau fail setelah `dvc pull`: cek `DAGSHUB_TOKEN`, cek DVC remote setup.
 
 ---
 
-### Export artifact test
+### test_train.py — Training output
+
+```bash
+pytest tests/test_train.py -v
+```
+
+**Yang di-test:**
+- `runs/train/weights/best.pt` ada dan > 5MB
+- Checkpoint bisa di-load Ultralytics tanpa error
+- MLflow experiment `rescuevision-yolov8n` ada dan punya run
+- mAP50 di atas minimum threshold (0.30)
+- Semua hyperparams ter-log (`model`, `epochs`, `batch`)
+- `best.pt` artifact ter-log di MLflow run
+
+> Test MLflow di-skip otomatis kalau `DAGSHUB_*` env vars tidak di-set.
+
+---
+
+### test_export.py — Artifacts
 
 ```bash
 pytest tests/test_export.py -v
 ```
 
 **Yang di-test:**
-- `artifacts/model.onnx` ada
-- `artifacts/model_int8.onnx` ada
-- `artifacts/model_int8.tflite` ada
-- ONNX FP32 bisa di-load dengan `onnxruntime`
-- ONNX INT8 bisa di-load dengan `onnxruntime`
-- TFLite INT8 bisa di-load dengan `tensorflow.lite.Interpreter`
-
-Kalau test ini fail, kemungkinan:
-1. `make export` belum dijalankan
-2. TensorFlow tidak terinstall → `pip install tensorflow`
+- Ketiga artifact ada dan > 0.5MB
+- ONNX FP32 dan INT8 bisa di-load ORT
+- TFLite INT8 bisa di-load `tf.lite.Interpreter`
+- Input shape ONNX = 4 dimensi, 3 channel
+- Output shape FP32 = `(1, 5, 8400)` — YOLOv8n expected
+- Output shape INT8 = sama dengan FP32
+- Output FP32 dan INT8 tidak mengandung NaN/Inf
+- INT8 lebih kecil dari FP32
+- Compression ratio ≥ 1.5x (kurang dari itu berarti quantization gagal)
 
 ---
 
-### Benchmark report test
+### test_benchmark.py — Latency SLOs
 
 ```bash
 pytest tests/test_benchmark.py -v
 ```
 
 **Yang di-test:**
-- `artifacts/benchmark_report.json` ada
-- Report punya key `results` dan `n_samples`
-- Tiap result punya: `mean_latency_ms`, `model_size_mb`, `format`
-- INT8 model lebih kecil dari FP32
+- Report schema valid (semua required fields ada)
+- Kedua format ONNX ada di report
+- INT8 lebih kecil dari FP32
+- FP32 model < 15MB, INT8 < 10MB (sanity cap)
+- FP32 mean latency < 200ms
+- INT8 mean latency < 100ms
+- INT8 p95 latency < 150ms
+- INT8 lebih cepat dari FP32
+- Semua latency positif
+- p95 ≥ mean (secara statistik harus selalu true)
 
-Kalau `test_int8_smaller_than_fp32` fail berarti quantization tidak bekerja dengan benar.
+> SLO threshold bisa disesuaikan di bagian atas `test_benchmark.py` sesuai target hardware.
+
+---
+
+### test_register.py — MLflow Model Registry
+
+```bash
+pytest tests/test_register.py -v
+```
+
+**Yang di-test:**
+- Ketiga model terdaftar di registry (`rescuevision-onnx-fp32`, `rescuevision-onnx-int8`, `rescuevision-tflite-int8`)
+- Ada versi di stage Staging atau None
+- Setiap versi punya tag `git_commit` (untuk traceability)
+- Setiap versi punya tag `pipeline`
+- Setiap versi ter-link ke training run (`run_id` tidak kosong)
+
+> Test ini di-skip otomatis kalau `DAGSHUB_*` env vars tidak di-set.
 
 ---
 

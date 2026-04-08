@@ -1,10 +1,10 @@
 import shutil
 from pathlib import Path
 
-from core.logger import get_logger
 from core.config import load_config
+from core.logger import get_logger
+from onnxruntime.quantization import QuantType, quantize_dynamic
 from ultralytics import YOLO
-from onnxruntime.quantization import quantize_dynamic, QuantType
 
 log = get_logger("stage3_export")
 ARTIFACTS_DIR = Path("artifacts")
@@ -32,7 +32,21 @@ def export_onnx_int8(fp32_path: Path) -> Path:
     return dst
 
 
-def export_tflite_int8(checkpoint: str, imgsz: int) -> Path:
+def export_tflite_int8(checkpoint: str, imgsz: int) -> Path | None:
+    """
+    TFLite export requires TensorFlow (heavy dep, GPU machine only).
+    Skips gracefully if TF is not installed so the ONNX artifacts
+    can still be produced on machines without TF.
+    """
+    try:
+        import tensorflow  # noqa: F401
+    except ImportError:
+        log.warning(
+            "tflite_export_skipped",
+            reason="tensorflow not installed — run `pip install -r requirements-train.txt`",
+        )
+        return None
+
     model = YOLO(checkpoint)
     model.export(format="tflite", imgsz=imgsz, int8=True)
     src = Path(checkpoint).parent / "best_int8.tflite"

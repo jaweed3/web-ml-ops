@@ -13,17 +13,50 @@
 
 ## Install
 
+Dependencies dibagi dua tergantung mesin yang dipakai.
+
+### Base install — semua mesin
+
+Tidak ada torch, tidak ada ultralytics. Cocok untuk:
+- Laptop i3 (debug, serve tests, code editing)
+- Mac Mini M4 (debug serving layer, jalankan test_export / test_benchmark kalau artifacts sudah ada)
+
 ```bash
 git clone https://github.com/your-username/rescuevision-mlops
 cd rescuevision-mlops
-pip install -r requirements.txt
+make install   # pip install -r requirements.txt
 ```
 
-To also enable code quality hooks:
+### Training install — GPU machine only
+
+Tambahan: ultralytics (narik torch ~2GB) + tensorflow (TFLite export).  
+Jalankan ini hanya di RTX 4060 lab atau Mac Mini M4 kalau mau train lokal.
+
+```bash
+make install-train   # pip install -r requirements.txt -r requirements-train.txt
+```
+
+### Code quality hooks
 
 ```bash
 pip install pre-commit
 make pre-commit-install
+```
+
+---
+
+## Device setup per mesin
+
+| Mesin | Install | `device` di train_config.yaml |
+|---|---|---|
+| Laptop i3 gen 7 | base only | — (tidak perlu train) |
+| Mac Mini M4 | base atau install-train | `mps` |
+| PC lab RTX 4060 | install-train | `cuda` |
+
+Edit `configs/train_config.yaml`:
+```yaml
+train:
+  device: cuda   # ganti ke mps untuk Mac Mini M4
 ```
 
 ---

@@ -1,14 +1,9 @@
-# Core ML
-ultralytics>=8.0.0
+# ── Base — works on any machine (no torch, no ultralytics) ───────────────────
+# Install: pip install -r requirements.txt
+
+# ONNX inference (serving + benchmark + export tests)
 onnx>=1.15.0
 onnxruntime>=1.17.0
-onnxruntime-tools>=1.7.0
-
-# Quantization
-onnxruntime-extensions>=0.9.0
-
-# TFLite (via TensorFlow)
-tensorflow>=2.15.0
 
 # Experiment tracking
 mlflow>=2.10.0
@@ -21,7 +16,7 @@ pyyaml>=6.0
 # Data versioning
 dvc[s3]>=3.0.0
 
-# Benchmarking & preprocessing
+# Image processing
 opencv-python-headless>=4.9.0
 numpy>=1.24.0
 Pillow>=10.0.0

@@ -83,8 +83,11 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
 
-      - name: Install dependencies
+      - name: Install base dependencies
         run: pip install -r requirements.txt
+
+      - name: Install training dependencies (ultralytics + tensorflow)
+        run: pip install -r requirements-train.txt
 
       - name: Configure DVC remote credentials
         run: |

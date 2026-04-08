@@ -1,6 +1,14 @@
 .PHONY: all data train export benchmark register test clean \
         run build up down logs smoke test-serve test-pipeline \
-        lint format typecheck quality pre-commit-install
+        lint format typecheck quality pre-commit-install \
+        install install-train
+
+# ── Install ───────────────────────────────────────────────────────────────────
+install:
+	pip install -r requirements.txt
+
+install-train:
+	pip install -r requirements.txt -r requirements-train.txt
 
 # ── Phase 1: MLOps pipeline ───────────────────────────────────────────────────
 all: data train export benchmark register

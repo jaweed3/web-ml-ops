@@ -18,6 +18,7 @@ class TrainConfig(BaseModel):
     batch: int
     lr0: float
     optimizer: str
+    device: str = "cpu"   # override per machine: cuda | mps | cpu
 
 
 class Config(BaseModel):

@@ -11,14 +11,15 @@ log = get_logger("stage2_train")
 def train(cfg) -> str:
     init_mlflow(experiment_name="rescuevision-yolov8n")
 
-    log.info("training_start", model=cfg.model.name, epochs=cfg.train.epochs)
+    log.info("training_start", model=cfg.model.name, epochs=cfg.train.epochs, device=cfg.train.device)
     log_params({
-        "model": cfg.model.name,
-        "epochs": cfg.train.epochs,
-        "imgsz": cfg.train.imgsz,
-        "batch": cfg.train.batch,
-        "lr0": cfg.train.lr0,
+        "model":     cfg.model.name,
+        "epochs":    cfg.train.epochs,
+        "imgsz":     cfg.train.imgsz,
+        "batch":     cfg.train.batch,
+        "lr0":       cfg.train.lr0,
         "optimizer": cfg.train.optimizer,
+        "device":    cfg.train.device,
     })
 
     model = YOLO(cfg.model.name)
@@ -31,6 +32,7 @@ def train(cfg) -> str:
         batch=cfg.train.batch,
         lr0=cfg.train.lr0,
         optimizer=cfg.train.optimizer,
+        device=cfg.train.device,
         project="runs",
         name="train",
         exist_ok=True,
