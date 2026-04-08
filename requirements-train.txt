@@ -1,0 +1,17 @@
+# ── Training — GPU machine only (pulls torch ~2GB) ────────────────────────────
+# Install: pip install -r requirements.txt -r requirements-train.txt
+#
+# Device support:
+#   RTX 4060 (CUDA)  → torch auto-detects CUDA, set device: cuda in train_config.yaml
+#   Mac Mini M4 (MPS) → torch auto-detects MPS,  set device: mps  in train_config.yaml
+#   CPU only          →                           set device: cpu  in train_config.yaml
+
+# YOLOv8 training + ONNX/TFLite export (Stage 2 + Stage 3 only)
+ultralytics>=8.0.0
+
+# ONNX INT8 quantization (Stage 3)
+onnxruntime-tools>=1.7.0
+onnxruntime-extensions>=0.9.0
+
+# TFLite INT8 export (Stage 3)
+tensorflow>=2.15.0

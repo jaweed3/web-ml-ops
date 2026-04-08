@@ -11,3 +11,9 @@ train:
   batch: 16
   lr0: 0.01
   optimizer: AdamW
+  # Device options:
+  #   cuda  → RTX 4060 lab (auto-detected if only one GPU)
+  #   mps   → Mac Mini M4 (Apple Silicon)
+  #   cpu   → fallback (slow, not recommended for full training)
+  #   0     → first CUDA device (same as cuda)
+  device: cuda
