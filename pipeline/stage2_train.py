@@ -3,12 +3,12 @@ import time
 from core.logger import get_logger
 from core.config import load_config
 from core.mlflow_client import init_mlflow, log_params, log_metrics, log_artifact
-from ultralytics import YOLO
 
 log = get_logger("stage2_train")
 
 
 def train(cfg) -> str:
+    from ultralytics import YOLO
     init_mlflow(experiment_name="rescuevision-yolov8n")
 
     log.info("training_start", model=cfg.model.name, epochs=cfg.train.epochs, device=cfg.train.device)
