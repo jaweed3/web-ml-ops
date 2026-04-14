@@ -2,51 +2,47 @@ SHELL := /bin/bash
 UV := $(shell command -v uv 2> /dev/null)
 DEBUG ?= false
 
-.PHONY: all data train export benchmark register test clean \
-        run build up down logs smoke test-serve test-pipeline \
-        lint format typecheck quality pre-commit-install \
-		install install-train
-
 .PHONY: help install quality test quality pipeline-full clean serve docker-up docker-down
 
 help: ## Helper Message 
 	@grep -E '^[a-zA-Z_-]+:.*?## .**$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}' 
 
 # ── Install ───────────────────────────────────────────────────────────────────
-install:
+install-dev:
 	@if [ -z "$(UV)" ]; then echo "uv not found. Install uv firstly."; exit 1; fi
-	uv sync --all-groups
+	uv sync --only-group dev
 
 install-train:
-	${PIP} install -r requirements.txt -r requirements-train.txt
+	uv sync --all-groups
 
 install-debug:
-	${PIP} install -r requirements-debug.txt -r requirements.txt
+	uv sync --group dev --group debug
+
 # ── Phase 1: MLOps pipeline ───────────────────────────────────────────────────
 all: data train export benchmark register
 
 debug:
 	DEBUG_MODE=true uv run python -m pipeline.stage1_data
-	DEBUG_MODE=true uv run python -m pipeline.stage2_data
+	DEBUG_MODE=true uv run python -m pipeline.stage2_train
 
 debug-train:
-	DEBUG_MODE=true uv run python -m pipeline.stage2_data
+	DEBUG_MODE=true uv run python -m pipeline.stage2_train
 
 .data_ready: pipeline/stage1_data.py
-	DEBUG_MODE=$(DEBUG) uv run python -m pipeline.stage1_data.py
+	DEBUG_MODE=$(DEBUG) uv run python -m pipeline.stage1_data
 	@touch .data_ready
 
 .model_trained: .data_ready pipeline/stage2_train.py
-	DEBUG_MODE=$(DEBUG) uv run python -m pipeline.stage2_data.py
+	DEBUG_MODE=$(DEBUG) uv run python -m pipeline.stage2_train
 	@touch .model_trained
 
-.benchmark_passed: .model_trained pipeline/stage4_benchmark.py
-	DEBUG_MODE=$(DEBUG) uv run python -m pipeline.stage4_benchmark.py
-	@touch .benchmark_passed
-
-.model_exported: .benchmark_passed pipeline/stage3_export.py
-	DEBUG_MODE=$(DEBUG) uv run python -m pipeline.stage3_export.py
+.model_exported: .model_trained pipeline/stage3_export.py
+	DEBUG_MODE=$(DEBUG) uv run python -m pipeline.stage3_export
 	@touch .model_exported
+
+.benchmark_passed: .model_exported pipeline/stage4_benchmark.py
+	DEBUG_MODE=$(DEBUG) uv run python -m pipeline.stage4_benchmark
+	@touch .benchmark_passed
 
 pipeline-full: quality .model_exported # Executed from model_export phase
 	uv run python -m pipeline.stage5_register
