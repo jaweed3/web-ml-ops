@@ -4,17 +4,22 @@ from dotenv import load_dotenv
 load_dotenv()
 
 def init_mlflow(experiment_name: str) -> None:
-    uri = (
-        f"https://dagshub.com/"
-        f"{os.environ['DAGSHUB_USERNAME']}/"
-        f"{os.environ['DAGSHUB_REPO']}.mlflow"
-    )
+    username = os.getenv("DAGSHUB_USERNAME")
+    token = os.getenv("DAGSHUB_TOKEN")
+    repo = os.getenv("DAGSHUB_REPO")
+    
+    if not username or not token or not repo:
+        return
+
+    uri = f"https://dagshub.com/{username}/{repo}.mlflow"
+
     mlflow.set_tracking_uri(uri)
-    os.environ["MLFLOW_TRACKING_USERNAME"] = os.environ["DAGSHUB_USERNAME"]
-    os.environ["MLFLOW_TRACKING_PASSWORD"] = os.environ["DAGSHUB_TOKEN"]
+    os.environ["MLFLOW_TRACKING_USERNAME"] = username
+    os.environ["MLFLOW_TRACKING_PASSWORD"] = token
+
     mlflow.set_experiment(experiment_name)
     mlflow.start_run()
-
+        
 
 def log_params(params: dict) -> None:
     mlflow.log_params(params)
