@@ -23,14 +23,20 @@ class StructuredLogger(logging.Logger):
         record.extra = kwargs
         self.handle(record)
 
-    def info(self, event, **kwargs):
-        self._log_structured(logging.INFO, event, **kwargs)
+    def info(self, msg, *args, **kwargs):
+        if args:
+            msg = msg % args
+        self._log_structured(logging.INFO, msg, **kwargs)
 
-    def warning(self, event, **kwargs):
-        self._log_structured(logging.WARNING, event, **kwargs)
+    def warning(self, msg, *args, **kwargs):
+        if args:
+            msg = msg % args
+        self._log_structured(logging.WARNING, msg, **kwargs)
 
-    def error(self, event, **kwargs):
-        self._log_structured(logging.ERROR, event, **kwargs)
+    def error(self, msg, *args, **kwargs):
+        if args:
+            msg = msg % args
+        self._log_structured(logging.ERROR, msg, **kwargs)
 
 
 def get_logger(name: str) -> StructuredLogger:

@@ -11,7 +11,12 @@ def train(cfg) -> str:
     from ultralytics import YOLO
     init_mlflow(experiment_name="rescuevision-yolov8n")
 
-    log.info("training_start", model=cfg.model.name, epochs=cfg.train.epochs, device=cfg.train.device)
+    log.info("training_start", extra={
+        "device":cfg.train.device, 
+        "model":cfg.model.name, 
+        "epochs":cfg.train.epochs,
+    })
+    
     log_params({
         "model":     cfg.model.name,
         "epochs":    cfg.train.epochs,
