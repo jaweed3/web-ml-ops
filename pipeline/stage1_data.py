@@ -1,4 +1,5 @@
 import subprocess
+import sys
 import random
 import os
 from pathlib import Path
@@ -6,6 +7,7 @@ from PIL import Image
 
 from core.logger import get_logger
 from core.config import load_config
+from app.utils.dataset import generate_dummy_data
 
 log = get_logger("stage1_data")
 
@@ -19,7 +21,8 @@ def pull_dataset() -> None:
     log.info("pull_complete")
 
 
-def validate_dataset(data_dir: str = "data/coco_person") -> dict:
+def validate_dataset(data_dir: str = "data/") -> dict:
+    log.info("dataset_validation_started!")
     path = Path(data_dir)
     required_dirs = [
         "images/train",
@@ -56,8 +59,20 @@ def validate_dataset(data_dir: str = "data/coco_person") -> dict:
         "val_count": len(val_images),
         "label_count": len(train_labels),
     }
-    log.info("dataset_valid", **stats)
+    log.info("your_dataset_is_valid", **stats)
     return stats
+
+def run_stage():
+    cfg = load_config()
+    is_debug = os.getenv("DEBUG_MODE", "false").lower() == "true"
+
+    if is_debug:
+        log.info("debug mode active ", action="generating dummy dataset")
+        generate_dummy_data(data_dir=cfg.data.dir)
+        validate_dataset(data_dir=cfg.data.dir)
+    else:
+        pull_dataset()
+        validate_dataset(data_dir=cfg.data.dir)
 
 def subset_dataset(data_dir: str, max_samples: int) ->  None:
     path = Path(data_dir)
@@ -80,9 +95,7 @@ def subset_dataset(data_dir: str, max_samples: int) ->  None:
     log.info("dataset subsetted : ", max_samples=max_samples)
 
 if __name__ == "__main__":
-    cfg = load_config()
-    pull_dataset()
-    validate_dataset(cfg.data.dir)
+    run_stage()
 
     if os.getenv("DEBUG_MODE", "false").lower() == "true":
-        subset_dataset(cfg.data.dir, cfg.debug.max_samples)
+        log.info("DEBUG_MODE_DETECTED")
