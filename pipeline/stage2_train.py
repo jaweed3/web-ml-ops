@@ -43,6 +43,7 @@ def train(cfg) -> str:
         exist_ok=True,
     )
 
+    assert results is not None
     training_time = round(time.time() - t0, 2)
     metrics = {
         "mAP50": results.results_dict.get("metrics/mAP50(B)", 0),
@@ -52,11 +53,11 @@ def train(cfg) -> str:
         "train_time_seconds": training_time,
     }
     log_metrics(metrics)
-    log.info("training_complete", **metrics)
+    log.info("training_complete", extra=metrics)
 
-    checkpoint_path = "runs/train/weights/best.pt"
+    checkpoint_path = str(results.save_dir / "weights"/"best.pt")
     log_artifact(checkpoint_path)
-    log.info("checkpoint_logged", path=checkpoint_path)
+    log.info("checkpoint_logged", extra={"path":checkpoint_path})
 
     return checkpoint_path
 

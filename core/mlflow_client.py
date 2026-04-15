@@ -12,10 +12,6 @@ def init_mlflow(experiment_name: str) -> None:
 
     if not username or not token or not repo:
         return
-    print(f"{username}, {repo}, {token}")
-    uri = f"https://dagshub.com/{username}/{repo}.mlflow"
-
-    #mlflow.set_tracking_uri(uri)
     mlflow.set_experiment(experiment_name)
     mlflow.start_run()
         
