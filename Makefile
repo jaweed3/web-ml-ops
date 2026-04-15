@@ -1,32 +1,51 @@
-.PHONY: all data train export benchmark register test clean \
-        run build up down logs smoke test-serve test-pipeline \
-        lint format typecheck quality pre-commit-install \
-        install install-train
+SHELL := /bin/bash
+UV := $(shell command -v uv 2> /dev/null)
+DEBUG ?= false
+
+.PHONY: help install quality test quality pipeline-full clean serve docker-up docker-down
+
+help: ## Helper Message 
+	@grep -E '^[a-zA-Z_-]+:.*?## .**$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}' 
 
 # ── Install ───────────────────────────────────────────────────────────────────
-install:
-	pip install -r requirements.txt
+install-dev:
+	@if [ -z "$(UV)" ]; then echo "uv not found. Install uv firstly."; exit 1; fi
+	uv sync --only-group dev
 
 install-train:
-	pip install -r requirements.txt -r requirements-train.txt
+	uv sync --all-groups
+
+install-debug:
+	uv sync --group dev --group debug
 
 # ── Phase 1: MLOps pipeline ───────────────────────────────────────────────────
 all: data train export benchmark register
 
-data:
-	python -m pipeline.stage1_data
+debug:
+	DEBUG_MODE=true uv run python -m pipeline.stage1_data
+	DEBUG_MODE=true uv run python -m pipeline.stage2_train
 
-train:
-	python -m pipeline.stage2_train
+debug-train:
+	DEBUG_MODE=true uv run python -m pipeline.stage2_train
 
-export:
-	python -m pipeline.stage3_export
+.data_ready: pipeline/stage1_data.py
+	DEBUG_MODE=$(DEBUG) uv run python -m pipeline.stage1_data
+	@touch .data_ready
 
-benchmark:
-	python -m pipeline.stage4_benchmark
+.model_trained: .data_ready pipeline/stage2_train.py
+	DEBUG_MODE=$(DEBUG) uv run python -m pipeline.stage2_train
+	@touch .model_trained
 
-register:
-	python -m pipeline.stage5_register
+.model_exported: .model_trained pipeline/stage3_export.py
+	DEBUG_MODE=$(DEBUG) uv run python -m pipeline.stage3_export
+	@touch .model_exported
+
+.benchmark_passed: .model_exported pipeline/stage4_benchmark.py
+	DEBUG_MODE=$(DEBUG) uv run python -m pipeline.stage4_benchmark
+	@touch .benchmark_passed
+
+pipeline-full: quality .model_exported # Executed from model_export phase
+	uv run python -m pipeline.stage5_register
 
 # ── Phase 2: Serving layer ────────────────────────────────────────────────────
 run:
@@ -49,28 +68,20 @@ smoke:
 
 # ── Tests ─────────────────────────────────────────────────────────────────────
 test-pipeline:
-	pytest tests/ -v --ignore=tests/serve --cov=pipeline --cov=core --cov-report=term-missing
+	uv run pytest tests/ -v --ignore=tests/serve --cov=pipeline --cov=core --cov-report=term-missing
 
 test-serve:
-	pytest tests/serve/ -v --cov=app --cov-report=term-missing
+	uv run pytest tests/serve/ -v --cov=app --cov-report=term-missing
 
 test:
-	pytest tests/ -v --cov=pipeline --cov=core --cov=app --cov-report=term-missing
+	uv run pytest tests/ -v --cov=pipeline --cov=core --cov=app --cov-report=term-missing
 
 # ── Code quality ─────────────────────────────────────────────────────────────
-lint:
-	ruff check .
 
-format:
-	ruff format .
-
-typecheck:
-	mypy app/ core/ pipeline/ --ignore-missing-imports
-
-quality: lint typecheck
-
-pre-commit-install:
-	pre-commit install
+quality:
+	uv run ruff check .
+	uv run ruff format --check .
+	uv run mypy app/ core/ pipeline/  --ignore-missing-imports
 
 # ── Cleanup ───────────────────────────────────────────────────────────────────
 clean:
