@@ -17,7 +17,10 @@ def export_onnx_fp32(checkpoint: str, imgsz: int) -> Path:
     dst = ARTIFACTS_DIR / "model.onnx"
     ARTIFACTS_DIR.mkdir(exist_ok=True)
     shutil.copy(src, dst)
-    log.info("export_onnx_fp32", path=str(dst), size_mb=round(dst.stat().st_size / 1e6, 2))
+    log.info("export_onnx_fp32", extra={ 
+        "path":str(dst), 
+        "size_mb":round(dst.stat().st_size / 1e6, 2)
+    })
     return dst
 
 
@@ -28,7 +31,10 @@ def export_onnx_int8(fp32_path: Path) -> Path:
         model_output=str(dst),
         weight_type=QuantType.QUInt8,
     )
-    log.info("export_onnx_int8", path=str(dst), size_mb=round(dst.stat().st_size / 1e6, 2))
+    log.info("export_onnx_int8", extra={
+        "path":str(dst), 
+        "size_mb":round(dst.stat().st_size / 1e6, 2)
+    })
     return dst
 
 
@@ -42,9 +48,9 @@ def export_tflite_int8(checkpoint: str, imgsz: int) -> Path | None:
         import tensorflow  # noqa: F401
     except ImportError:
         log.warning(
-            "tflite_export_skipped",
-            reason="tensorflow not installed — run `pip install -r requirements-train.txt`",
-        )
+            "tflite_export_skipped",extra={
+            "reason":"tensorflow not installed — run `pip install -r requirements-train.txt`",
+        })
         return None
 
     model = YOLO(checkpoint)
