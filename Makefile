@@ -24,7 +24,7 @@ all: data train export benchmark register
 debug:
 	DEBUG_MODE=true uv run python -m pipeline.stage1_data
 	DEBUG_MODE=true uv run python -m pipeline.stage2_train
-
+	DEBUG_MODE=true uv run python -m pipeline.stage3_export
 debug-train:
 	DEBUG_MODE=true uv run python -m pipeline.stage2_train
 
