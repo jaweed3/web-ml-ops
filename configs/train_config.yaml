@@ -17,3 +17,11 @@ train:
   #   cpu   → fallback (slow, not recommended for full training)
   #   0     → first CUDA device (same as cuda)
   device: cuda
+
+debug:
+  epochs: 1
+  imgsz: 320
+  batch: 4
+  device: cpu
+  max_samples: 50
+

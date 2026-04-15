@@ -1,5 +1,6 @@
 import subprocess
 import random
+import os
 from pathlib import Path
 from PIL import Image
 
@@ -58,8 +59,30 @@ def validate_dataset(data_dir: str = "data/coco_person") -> dict:
     log.info("dataset_valid", **stats)
     return stats
 
+def subset_dataset(data_dir: str, max_samples: int) ->  None:
+    path = Path(data_dir)
+
+    for split in ["train", "test"]:
+        images = sorted((path / "images" / split).glob("*.jpg"))
+        if len(images) <= max_samples:
+            continue
+
+        keep = set(img.stem for img in images[:max_samples])
+
+        for img in images:
+            if img.stem not in keep:
+                img.unlink()
+
+        for lbl in (path / "labels" / split).glob("*.txt"):
+            if lbl.stem not in keep:
+                lbl.unlink()
+
+    log.info("dataset subsetted : ", max_samples=max_samples)
 
 if __name__ == "__main__":
     cfg = load_config()
     pull_dataset()
     validate_dataset(cfg.data.dir)
+
+    if os.getenv("DEBUG_MODE", "false").lower() == "true":
+        subset_dataset(cfg.data.dir, cfg.debug.max_samples)
