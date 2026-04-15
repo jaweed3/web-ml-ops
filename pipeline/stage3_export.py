@@ -49,7 +49,7 @@ def export_tflite_int8(checkpoint: str, imgsz: int) -> Path | None:
     except ImportError:
         log.warning(
             "tflite_export_skipped",extra={
-            "reason":"tensorflow not installed — run `pip install -r requirements-train.txt`",
+            "reason":"tensorflow not installed — run `make install train`",
         })
         return None
 
@@ -58,13 +58,18 @@ def export_tflite_int8(checkpoint: str, imgsz: int) -> Path | None:
     src = Path(checkpoint).parent / "best_int8.tflite"
     dst = ARTIFACTS_DIR / "model_int8.tflite"
     shutil.copy(src, dst)
-    log.info("export_tflite_int8", path=str(dst), size_mb=round(dst.stat().st_size / 1e6, 2))
+    log.info("export_tflite_int8", extra={ 
+        "path":str(dst), 
+        "size_mb":round(dst.stat().st_size / 1e6, 2)
+    })
     return dst
 
 
 if __name__ == "__main__":
     cfg = load_config()
-    checkpoint = "runs/train/weights/best.pt"
+    checkpoint = "runs/detect/runs/train/weights/best.pt"
     fp32 = export_onnx_fp32(checkpoint, cfg.train.imgsz)
     export_onnx_int8(fp32)
     export_tflite_int8(checkpoint, cfg.train.imgsz)
+
+
