@@ -7,16 +7,21 @@ from PIL import Image
 
 from core.logger import get_logger
 from core.config import load_config
-from app.utils.dataset import generate_dummy_data
+from app.utils.dummy_dataset import generate_dummy_data
+from app.utils.dummy_yaml import generate_dummy_yaml
 
 log = get_logger("stage1_data")
 
 
 def pull_dataset() -> None:
-    log.info("pulling_dataset", source="dagshub_dvc_remote")
+    log.info("pulling_dataset", extra={
+        "source": "dagshub_dvc_remote"
+    })
     result = subprocess.run(["dvc", "pull"], capture_output=True, text=True)
     if result.returncode != 0:
-        log.error("dvc_pull_failed", stderr=result.stderr)
+        log.error("dvc_pull_failed", extra={ 
+            "stderr":result.stderr
+        })
         raise RuntimeError(f"DVC pull failed:\n{result.stderr}")
     log.info("pull_complete")
 
@@ -47,6 +52,10 @@ def validate_dataset(data_dir: str = "data/") -> dict:
             f"{len(train_labels)} labels"
         )
 
+    yaml_file = "dataset.yaml"
+    if Path(yaml_file).exists():
+        log.info(f"yaml file exists : {yaml_file}")
+
     samples = random.sample(train_images, min(10, len(train_images)))
     for img_path in samples:
         try:
@@ -59,7 +68,7 @@ def validate_dataset(data_dir: str = "data/") -> dict:
         "val_count": len(val_images),
         "label_count": len(train_labels),
     }
-    log.info("your_dataset_is_valid", **stats)
+    log.info("your_dataset_is_valid", extra={**stats})
     return stats
 
 def run_stage():
@@ -67,8 +76,11 @@ def run_stage():
     is_debug = os.getenv("DEBUG_MODE", "false").lower() == "true"
 
     if is_debug:
-        log.info("debug mode active ", action="generating dummy dataset")
+        log.info("debug mode active ", extra={
+            "action":"generating dummy dataset"
+        })
         generate_dummy_data(data_dir=cfg.data.dir)
+        generate_dummy_yaml(output_dir=cfg.data.dir)
         validate_dataset(data_dir=cfg.data.dir)
     else:
         pull_dataset()
@@ -92,7 +104,7 @@ def subset_dataset(data_dir: str, max_samples: int) ->  None:
             if lbl.stem not in keep:
                 lbl.unlink()
 
-    log.info("dataset subsetted : ", max_samples=max_samples)
+    log.info("dataset subsetted : ", extra={"max_samples":max_samples})
 
 if __name__ == "__main__":
     run_stage()
