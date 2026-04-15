@@ -1,6 +1,7 @@
 import os
 import mlflow
-
+from dotenv import load_dotenv
+load_dotenv()
 
 def init_mlflow(experiment_name: str) -> None:
     uri = (
