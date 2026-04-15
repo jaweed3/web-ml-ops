@@ -3,6 +3,41 @@ import json
 import sys
 from datetime import datetime, timezone
 
+try:
+    from rich.logging import RichHandler
+    from rich.console import Console
+    from rich.theme import Theme
+    _RICH = True
+except ImportError:
+    _RICH = False
+
+_THEME = Theme({
+    "logging.level.info": "bold cyan",
+    "logging.level.warning": "bold yellow",
+    "logging.level.error": "bold red",
+    "logging.level.debug": "dim white"
+})
+
+def _make_rich_handler() -> logging.Handler:
+    console = Console(stderr=False, theme=_THEME)
+    return RichHandler(
+        console=console,
+        show_time=True,
+        show_level=True,
+        show_path=False,
+        rich_tracebacks=True,
+        tracebacks_show_locals=False,
+        log_time_format=["%H:%M:%S"]
+        markup=True
+    )
+
+def _make_plain_handler() -> logging.Handler:
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setFormatter(logging.Formatter(
+        fmt="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
+        datefmt="%H:%M:%S"
+    ))
+    return handler
 
 class JSONFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
