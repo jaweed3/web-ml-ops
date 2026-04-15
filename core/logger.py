@@ -39,9 +39,9 @@ class StructuredLogger(logging.Logger):
         self._log_structured(logging.ERROR, msg, **kwargs)
 
 
-def get_logger(name: str) -> StructuredLogger:
-    logging.setLoggerClass(StructuredLogger)
+def get_logger(name: str) -> logging.Logger:
     logger = logging.getLogger(name)
+
     if not logger.handlers:
         handler = logging.StreamHandler(sys.stdout)
         handler.setFormatter(JSONFormatter())
