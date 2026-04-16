@@ -1,9 +1,0 @@
-__pycache__
-artifacts
-mlruns
-logs
-.env
-.git
-.gitignore
-venv
-research

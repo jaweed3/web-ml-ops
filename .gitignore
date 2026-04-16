@@ -1,9 +1,26 @@
 node_modules/*
 
-
+# Environment
 .env
 backend/.env
 
+# Python
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.venv/
+
+# Pipeline outputs (tracked by DVC or uploaded to MLflow)
+artifacts/*
+!artifacts/.gitkeep
+runs/
+
+# DVC local state
+.dvc/tmp/
+.dvc/cache/
+
+# Legacy backend pycache
 backend/__pycache__/*
 backend/src/datascience/__pycache__/*
 backend/src/datascience/components/__pycache__/*
@@ -53,3 +70,5 @@ frontend/.vercel
 # typescript
 frontend/*.tsbuildinfo
 frontend/next-env.d.ts
+/train_data
+/test_data

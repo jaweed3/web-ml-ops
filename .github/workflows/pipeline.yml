@@ -1,0 +1,175 @@
+name: RescueVision MLOps Pipeline
+
+on:
+  push:
+    branches: ["**"]          # lint + test on every branch
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      promote_to_production:
+        description: "Promote latest Staging model → Production"
+        required: false
+        default: "false"
+        type: choice
+        options: ["false", "true"]
+
+env:
+  PYTHON_VERSION: "3.10"
+
+# ── Job 1: Lint + type-check (all branches) ──────────────────────────────────
+jobs:
+  quality:
+    name: Code Quality
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install quality tools
+        run: pip install ruff mypy pydantic fastapi
+
+      - name: Ruff lint
+        run: ruff check .
+
+      - name: Ruff format check
+        run: ruff format --check .
+
+      - name: Mypy type check
+        run: mypy app/ core/ pipeline/ --ignore-missing-imports
+        continue-on-error: true   # warn only until strict typing is complete
+
+# ── Job 2: Test suite (all branches) ─────────────────────────────────────────
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    needs: quality
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run serve unit tests
+        run: pytest tests/serve/ -v --cov=app --cov-report=xml
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage.xml
+
+# ── Job 3: Full pipeline → Staging (main branch only) ─────────────────────────
+  pipeline-staging:
+    name: Pipeline → Staging
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name != 'workflow_dispatch'
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install base dependencies
+        run: pip install -r requirements.txt
+
+      - name: Install training dependencies (ultralytics + tensorflow)
+        run: pip install -r requirements-train.txt
+
+      - name: Configure DVC remote credentials
+        run: |
+          dvc remote modify origin --local access_key_id ${{ secrets.DAGSHUB_TOKEN }}
+          dvc remote modify origin --local secret_access_key ${{ secrets.DAGSHUB_TOKEN }}
+
+      - name: Pull dataset (DVC)
+        run: dvc pull
+        env:
+          DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
+
+      - name: Pre-pipeline data tests
+        run: pytest tests/test_data.py -v
+
+      - name: Run full pipeline (DVC repro)
+        run: dvc repro
+        env:
+          DAGSHUB_USERNAME: ${{ secrets.DAGSHUB_USERNAME }}
+          DAGSHUB_REPO: ${{ secrets.DAGSHUB_REPO }}
+          DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
+
+      - name: Post-pipeline artifact + benchmark tests
+        run: pytest tests/test_export.py tests/test_benchmark.py -v
+
+      - name: Register models to Staging
+        run: python -m pipeline.stage5_register --stage Staging
+        env:
+          DAGSHUB_USERNAME: ${{ secrets.DAGSHUB_USERNAME }}
+          DAGSHUB_REPO: ${{ secrets.DAGSHUB_REPO }}
+          DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
+
+      - name: Upload edge artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: edge-artifacts-${{ github.sha }}
+          path: artifacts/
+          retention-days: 30
+
+# ── Job 4: Promote Staging → Production (manual trigger only) ─────────────────
+  promote-production:
+    name: Promote Staging → Production
+    runs-on: ubuntu-latest
+    needs: []
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.promote_to_production == 'true'
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install mlflow dagshub
+
+      - name: Promote models Staging → Production
+        run: |
+          python - <<'EOF'
+          import os, mlflow
+
+          uri = f"https://dagshub.com/{os.environ['DAGSHUB_USERNAME']}/{os.environ['DAGSHUB_REPO']}.mlflow"
+          mlflow.set_tracking_uri(uri)
+          os.environ["MLFLOW_TRACKING_USERNAME"] = os.environ["DAGSHUB_USERNAME"]
+          os.environ["MLFLOW_TRACKING_PASSWORD"] = os.environ["DAGSHUB_TOKEN"]
+
+          client = mlflow.MlflowClient()
+          models = [
+              "rescuevision-onnx-fp32",
+              "rescuevision-onnx-int8",
+              "rescuevision-tflite-int8",
+          ]
+          for name in models:
+              versions = client.get_latest_versions(name, stages=["Staging"])
+              if not versions:
+                  print(f"No Staging version for {name}, skipping")
+                  continue
+              v = versions[0].version
+              client.transition_model_version_stage(name, v, "Production", archive_existing_versions=True)
+              print(f"Promoted {name} v{v} → Production")
+          EOF
+        env:
+          DAGSHUB_USERNAME: ${{ secrets.DAGSHUB_USERNAME }}
+          DAGSHUB_REPO: ${{ secrets.DAGSHUB_REPO }}
+          DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
