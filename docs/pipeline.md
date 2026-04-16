@@ -8,23 +8,48 @@ Stage 1: Data       →  Stage 2: Train  →  Stage 3: Export
 Stage 5: Register   ←  Stage 4: Benchmark
 ```
 
+> **Testing status:** Stage 3 (export & quantization) is verified. Stages 1, 2, 4, 5 are implemented but not yet end-to-end tested.
+
 ---
 
 ## Running the pipeline
 
+### Full pipeline via DVC (recommended)
+
 ```bash
-# Full pipeline
-make all
-
-# Individual stages
-make data       # Stage 1
-make train      # Stage 2
-make export     # Stage 3
-make benchmark  # Stage 4
-make register   # Stage 5
-
-# DVC — reruns only stages whose inputs changed
+# Reruns only stages whose inputs changed
 dvc repro
+```
+
+DVC resolves the DAG defined in `dvc.yaml` and skips stages that are already up to date.
+
+### Individual stages
+
+```bash
+uv run python -m pipeline.stage1_data
+uv run python -m pipeline.stage2_train
+uv run python -m pipeline.stage3_export
+uv run python -m pipeline.stage4_benchmark
+uv run python -m pipeline.stage5_register
+```
+
+### Debug mode (no GPU, no DagsHub)
+
+```bash
+# Stages 1-3 with dummy data
+make debug
+
+# Or per-stage
+DEBUG_MODE=true uv run python -m pipeline.stage1_data
+DEBUG_MODE=true uv run python -m pipeline.stage2_train
+DEBUG_MODE=true uv run python -m pipeline.stage3_export
+```
+
+### Quality check + export + register
+
+```bash
+make pipeline-full
+# equivalent: ruff + mypy, then export stage (stamp-based), then stage5_register
 ```
 
 ---
@@ -33,14 +58,14 @@ dvc repro
 
 **File:** `pipeline/stage1_data.py`
 
-Pulls the versioned dataset from DagsHub via DVC, then validates it before any downstream stage runs.
+Pulls the versioned dataset from DagsHub via DVC, then validates it before any downstream stage runs. When `DEBUG_MODE=true`, skips the DVC pull and generates a synthetic dataset instead.
 
 **What it validates:**
 - Required directory structure exists (`images/train`, `images/val`, `labels/train`, `labels/val`)
 - Image count matches label count (no orphaned annotations)
-- Spot-checks 10 random images for corruption via PIL verify
+- Spot-checks up to 10 random images for corruption via PIL verify
 
-**Inputs:** `data/coco_person.dvc` (DVC pointer)  
+**Inputs:** `data/coco_person.dvc` (DVC pointer), or generates dummy data in debug mode  
 **Outputs:** `data/coco_person/` (populated dataset directory)
 
 **Fails fast if:**
@@ -58,12 +83,14 @@ Pulls the versioned dataset from DagsHub via DVC, then validates it before any d
 Trains YOLOv8n via the Ultralytics API. Every run is tracked in MLflow on DagsHub.
 
 **Logged to MLflow:**
-- Params: model name, epochs, imgsz, batch, lr0, optimizer
+- Params: model name, epochs, imgsz, batch, lr0, optimizer, device
 - Metrics: mAP50, mAP50-95, precision, recall, train_time_seconds
 - Artifact: `runs/train/weights/best.pt`
 
 **Inputs:** `data/coco_person/`, `configs/train_config.yaml`, `params.yaml`  
 **Outputs:** `runs/train/weights/best.pt`
+
+**Requires:** `make install-train` (ultralytics + torch)
 
 ---
 
@@ -76,8 +103,10 @@ Converts `best.pt` into three edge-ready formats.
 | Format | Method | Output |
 |---|---|---|
 | ONNX FP32 | Ultralytics export API | `artifacts/model.onnx` |
-| ONNX INT8 | `onnxruntime.quantization.quantize_dynamic` | `artifacts/model_int8.onnx` |
+| ONNX INT8 | `onnxruntime.quantization.quantize_dynamic` (QUInt8) | `artifacts/model_int8.onnx` |
 | TFLite INT8 | Ultralytics export with `int8=True` | `artifacts/model_int8.tflite` |
+
+TFLite export requires tensorflow. If tensorflow is not installed, the stage logs a warning and skips TFLite — ONNX artifacts are still produced.
 
 **Inputs:** `runs/train/weights/best.pt`  
 **Outputs:** all three files in `artifacts/`
@@ -88,7 +117,7 @@ Converts `best.pt` into three edge-ready formats.
 
 **File:** `pipeline/stage4_benchmark.py`
 
-Runs inference on 100 val images per ONNX format and records objective metrics.
+Runs inference on up to 100 val images per ONNX format and records objective metrics. TFLite is not benchmarked.
 
 **Metrics recorded per format:**
 - `mean_latency_ms`
@@ -96,6 +125,9 @@ Runs inference on 100 val images per ONNX format and records objective metrics.
 - `model_size_mb`
 
 **Output:** `artifacts/benchmark_report.json` + all metrics logged to MLflow with prefix (`onnx_fp32_`, `onnx_int8_`)
+
+**Inputs:** `artifacts/model.onnx`, `artifacts/model_int8.onnx`, `data/coco_person/images/val`  
+**Fails if:** no validation images found
 
 ---
 
@@ -112,9 +144,14 @@ mAP50_int8 <  mAP50_fp32 × 0.97   →  FAIL — exit 1, CI job fails
 mAP50 missing from benchmark       →  skip gate, register directly
 ```
 
-If gate passes, all three model artifacts are registered to MLflow Model Registry with tags:
+If the gate passes, all three model artifacts are registered to MLflow Model Registry with tags:
 - `git_commit` — short SHA
 - `pipeline` — `rescuevision-mlops`
+
+**Registered model names:**
+- `rescuevision-onnx-fp32`
+- `rescuevision-onnx-int8`
+- `rescuevision-tflite-int8`
 
 ---
 
@@ -136,6 +173,14 @@ train:
   batch: 16
   lr0: 0.01
   optimizer: AdamW
+  device: cuda   # cuda | mps | cpu
+
+debug:
+  epochs: 1
+  imgsz: 320
+  batch: 4
+  device: cpu
+  max_samples: 50
 ```
 
 ### `params.yaml` — DVC-tracked subset
@@ -153,13 +198,17 @@ Changing any value here triggers downstream stages automatically on the next `dv
 
 ---
 
-## Logging format
+## Logging
 
-Every stage outputs structured JSON to stdout:
+Every stage uses `core.logger.get_logger()`. By default logs are rendered with Rich (colored, human-readable). To switch to JSON output:
 
-```json
-{"timestamp": "2026-04-08T14:23:01+00:00", "level": "INFO", "logger": "stage4_benchmark", "event": "benchmark_result", "format": "onnx_fp32", "mean_latency_ms": 42.3, "p95_latency_ms": 58.1, "model_size_mb": 6.2}
-{"timestamp": "2026-04-08T14:23:44+00:00", "level": "INFO", "logger": "stage4_benchmark", "event": "benchmark_result", "format": "onnx_int8", "mean_latency_ms": 21.7, "p95_latency_ms": 29.4, "model_size_mb": 3.1}
+```bash
+LOG_FORMAT=json uv run python -m pipeline.stage3_export
 ```
 
-No `print()`, no `logging.basicConfig()`. All log lines are machine-readable and greppable.
+JSON log line example:
+```json
+{"timestamps": "2026-04-08T14:23:01+00:00", "level": "INFO", "logger": "stage4_benchmark", "event": "benchmark_result"}
+```
+
+No `print()`, no `logging.basicConfig()`.

@@ -12,6 +12,8 @@ dataset (DVC)
   → Prometheus + Grafana
 ```
 
+> **Testing status:** Stage 3 (export & quantization) is verified. Stages 1, 2, 4, 5 and the serving layer are implemented but not yet end-to-end tested.
+
 ---
 
 ## Artifacts produced
@@ -27,14 +29,20 @@ dataset (DVC)
 
 ## Quickstart
 
-```bash
-git clone https://github.com/your-username/rescuevision-mlops
-cd rescuevision-mlops
-pip install -r requirements.txt
-cp .env.example .env   # fill in your DagsHub credentials
+Requires [uv](https://docs.astral.sh/uv/).
 
-# Run the full ML pipeline
-make all
+```bash
+git clone <your-repo-url>
+cd rescuevision-mlops
+
+# Install base deps (no torch, no ultralytics)
+make install-dev
+
+# Create .env and fill in your DagsHub credentials
+cp .env .env.local   # or create .env from scratch — see docs/setup.md
+
+# Run the full ML pipeline via DVC
+dvc repro
 
 # Start the inference server + monitoring stack
 make up
@@ -42,6 +50,30 @@ make up
 
 Server → http://localhost:8080/docs  
 Grafana → http://localhost:3000 (admin / rescuevision)
+
+---
+
+## Running individual pipeline stages
+
+```bash
+# Stage 1 — data pull + validation
+uv run python -m pipeline.stage1_data
+
+# Stage 2 — training (requires make install-train)
+uv run python -m pipeline.stage2_train
+
+# Stage 3 — export & quantization (verified)
+uv run python -m pipeline.stage3_export
+
+# Stage 4 — benchmark
+uv run python -m pipeline.stage4_benchmark
+
+# Stage 5 — register to MLflow
+uv run python -m pipeline.stage5_register
+
+# Debug mode — runs stages 1-3 with dummy data, no GPU required
+make debug
+```
 
 ---
 
@@ -73,7 +105,7 @@ rescuevision-mlops/
 │   ├── pipeline/      # PredictionPipeline
 │   ├── router/        # FastAPI routes
 │   ├── schema/        # Pydantic request/response models
-│   ├── middleware/    # Request logger + metrics hook
+│   ├── middleware/     # Request logger + metrics hook
 │   └── utils/         # Shared utilities
 ├── configs/           # train_config.yaml, serve_config.yaml
 ├── monitoring/        # Prometheus scrape config + Grafana provisioning
