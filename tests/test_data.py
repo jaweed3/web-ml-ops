@@ -4,6 +4,7 @@ DATA_DIR = Path("data/coco_person")
 
 # ── Structure ─────────────────────────────────────────────────────────────────
 
+
 def test_required_dirs_exist():
     for d in ["images/train", "images/val", "labels/train", "labels/val"]:
         assert (DATA_DIR / d).exists(), f"Missing: {DATA_DIR / d}"
@@ -21,12 +22,11 @@ def test_val_set_not_empty():
 
 # ── Image / label alignment ───────────────────────────────────────────────────
 
+
 def test_no_image_label_mismatch():
     imgs = sorted((DATA_DIR / "images/train").glob("*.jpg"))
     lbls = sorted((DATA_DIR / "labels/train").glob("*.txt"))
-    assert len(imgs) == len(lbls), (
-        f"Mismatch: {len(imgs)} images vs {len(lbls)} labels"
-    )
+    assert len(imgs) == len(lbls), f"Mismatch: {len(imgs)} images vs {len(lbls)} labels"
 
 
 def test_every_image_has_label():
@@ -38,6 +38,7 @@ def test_every_image_has_label():
 
 
 # ── Annotation format (YOLO) ──────────────────────────────────────────────────
+
 
 def test_yolo_annotation_format_valid():
     """
@@ -55,7 +56,7 @@ def test_yolo_annotation_format_valid():
                 errors.append(f"{label_path.name}:{i} — expected 5 fields, got {len(parts)}")
                 continue
             try:
-                cls = int(parts[0])
+                int(parts[0])
                 coords = [float(p) for p in parts[1:]]
             except ValueError:
                 errors.append(f"{label_path.name}:{i} — non-numeric value")
@@ -63,7 +64,7 @@ def test_yolo_annotation_format_valid():
             if not all(0.0 <= c <= 1.0 for c in coords):
                 errors.append(f"{label_path.name}:{i} — coords out of [0,1]: {coords}")
 
-    assert not errors, f"Annotation format errors (first 5):\n" + "\n".join(errors[:5])
+    assert not errors, "Annotation format errors (first 5):\n" + "\n".join(errors[:5])
 
 
 def test_only_person_class_present():
@@ -77,16 +78,16 @@ def test_only_person_class_present():
             if parts and parts[0] != "0":
                 non_zero.append(f"{label_path.name}: class {parts[0]}")
 
-    assert not non_zero, (
-        f"Non-person class ids found (expected 0 only):\n" + "\n".join(non_zero[:5])
-    )
+    assert not non_zero, "Non-person class ids found (expected 0 only):\n" + "\n".join(non_zero[:5])
 
 
 # ── Image integrity ───────────────────────────────────────────────────────────
 
+
 def test_sample_images_not_corrupt():
     """Spot-check up to 20 random training images for corruption via PIL."""
     import random
+
     from PIL import Image
 
     imgs = list((DATA_DIR / "images/train").glob("*.jpg"))
@@ -99,4 +100,4 @@ def test_sample_images_not_corrupt():
         except Exception as e:
             corrupt.append(f"{path.name}: {e}")
 
-    assert not corrupt, f"Corrupt images detected:\n" + "\n".join(corrupt)
+    assert not corrupt, "Corrupt images detected:\n" + "\n".join(corrupt)

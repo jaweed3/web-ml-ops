@@ -31,17 +31,13 @@ class ModelLoader:
         cache_cfg: CacheConfig,
     ) -> None:
         self._dagshub = dagshub_cfg
-        self._model   = model_cfg
-        self._cache   = cache_cfg
+        self._model = model_cfg
+        self._cache = cache_cfg
 
     # ── private ────────────────────────────────────────────────────────────────
 
     def _init_tracking(self) -> None:
-        uri = (
-            f"https://dagshub.com/"
-            f"{self._dagshub.username}/"
-            f"{self._dagshub.repo}.mlflow"
-        )
+        uri = f"https://dagshub.com/{self._dagshub.username}/{self._dagshub.repo}.mlflow"
         mlflow.set_tracking_uri(uri)
         os.environ["MLFLOW_TRACKING_USERNAME"] = self._dagshub.username
         os.environ["MLFLOW_TRACKING_PASSWORD"] = self._dagshub.token
@@ -50,7 +46,7 @@ class ModelLoader:
     def _resolve_version(self, name: str, requested: str) -> str:
         if requested != "latest":
             return requested
-        client   = mlflow.MlflowClient()
+        client = mlflow.MlflowClient()
         versions = client.get_latest_versions(name, stages=["Production", "None"])
         if not versions:
             raise RuntimeError(f"No registered versions found for model: {name}")
@@ -61,9 +57,7 @@ class ModelLoader:
     def _find_onnx(self, local_dir: str) -> Path:
         candidates = list(Path(local_dir).glob("**/*.onnx"))
         if not candidates:
-            raise RuntimeError(
-                f"No .onnx file found in downloaded artifact directory: {local_dir}"
-            )
+            raise RuntimeError(f"No .onnx file found in downloaded artifact directory: {local_dir}")
         return candidates[0]
 
     # ── public ────────────────────────────────────────────────────────────────
@@ -78,11 +72,11 @@ class ModelLoader:
         self._init_tracking()
         ensure_dir(self._cache.model_dir)
 
-        name    = self._model.name
+        name = self._model.name
         version = self._resolve_version(name, self._model.version)
 
         log.info("downloading_artifact", name=name, version=version)
-        model_uri  = f"models:/{name}/{version}"
+        model_uri = f"models:/{name}/{version}"
         local_path = mlflow.artifacts.download_artifacts(
             artifact_uri=model_uri,
             dst_path=str(self._cache.model_dir),

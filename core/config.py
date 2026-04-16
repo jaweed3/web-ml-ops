@@ -1,7 +1,9 @@
-from pydantic import BaseModel
-from pathlib import Path
-import yaml
 import os
+from pathlib import Path
+
+import yaml
+from pydantic import BaseModel
+
 
 class DataConfig(BaseModel):
     dir: str
@@ -18,7 +20,8 @@ class TrainConfig(BaseModel):
     batch: int
     lr0: float
     optimizer: str
-    device: str = "cpu"   # override per machine: cuda | mps | cpu
+    device: str = "cpu"  # override per machine: cuda | mps | cpu
+
 
 class DebugConfig(BaseModel):
     epochs: int
@@ -27,16 +30,18 @@ class DebugConfig(BaseModel):
     device: str
     max_samples: int
 
+
 class Config(BaseModel):
     data: DataConfig
     model: ModelConfig
     train: TrainConfig
     debug: DebugConfig
 
+
 def load_config(path: str = "configs/train_config.yaml") -> Config:
     raw = yaml.safe_load(Path(path).read_text())
     cfg = Config(**raw)
-    
+
     if os.getenv("DEBUG_MODE", "false").lower() == "true":
         cfg.train.epochs = cfg.debug.epochs
         cfg.train.imgsz = cfg.debug.imgsz
@@ -44,4 +49,3 @@ def load_config(path: str = "configs/train_config.yaml") -> Config:
         cfg.train.device = cfg.debug.device
 
     return cfg
-

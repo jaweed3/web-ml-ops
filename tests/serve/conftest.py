@@ -1,8 +1,9 @@
+from unittest.mock import MagicMock, patch
+
 import cv2
 import numpy as np
 import pytest
 from fastapi.testclient import TestClient
-from unittest.mock import MagicMock, patch
 
 
 def _make_jpeg(h: int = 480, w: int = 640) -> bytes:
@@ -33,27 +34,27 @@ def client():
 
     dummy_output = np.zeros((1, 5, 8400), dtype=np.float32)
     # Place one high-confidence box at centre
-    dummy_output[0, 0, 0] = 0.5   # cx
-    dummy_output[0, 1, 0] = 0.5   # cy
-    dummy_output[0, 2, 0] = 0.2   # w
-    dummy_output[0, 3, 0] = 0.4   # h
-    dummy_output[0, 4, 0] = 0.9   # confidence
+    dummy_output[0, 0, 0] = 0.5  # cx
+    dummy_output[0, 1, 0] = 0.5  # cy
+    dummy_output[0, 2, 0] = 0.2  # w
+    dummy_output[0, 3, 0] = 0.4  # h
+    dummy_output[0, 4, 0] = 0.9  # confidence
 
     mock_runner = MagicMock()
-    mock_runner.is_ready    = True
-    mock_runner.version     = "test-v1"
-    mock_runner.loaded_at   = 1_700_000_000.0
+    mock_runner.is_ready = True
+    mock_runner.version = "test-v1"
+    mock_runner.loaded_at = 1_700_000_000.0
     mock_runner.input_shape = [1, 3, 640, 640]
     mock_runner.run.return_value = ([dummy_output], 12.3, "req_test001")
 
     with (
         patch("app.components.runner._runner", mock_runner),
-        patch("app.router.health.get_runner",  return_value=mock_runner),
-        patch("app.router.meta.get_runner",    return_value=mock_runner),
+        patch("app.router.health.get_runner", return_value=mock_runner),
+        patch("app.router.meta.get_runner", return_value=mock_runner),
         patch("app.pipeline.prediction_pipeline.get_runner", return_value=mock_runner),
     ):
-        app.state.pipeline     = _make_pipeline()
-        app.state.model_name   = "rescuevision-onnx-int8"
+        app.state.pipeline = _make_pipeline()
+        app.state.model_name = "rescuevision-onnx-int8"
         app.state.model_format = "onnx_int8"
         yield TestClient(app, raise_server_exceptions=False)
 
@@ -63,7 +64,10 @@ def _make_pipeline():
     from app.pipeline.prediction_pipeline import PredictionPipeline
 
     cfg = InferenceConfig(
-        imgsz=640, conf_threshold=0.25, iou_threshold=0.45,
-        max_detections=100, n_threads=2,
+        imgsz=640,
+        conf_threshold=0.25,
+        iou_threshold=0.45,
+        max_detections=100,
+        n_threads=2,
     )
     return PredictionPipeline(cfg)

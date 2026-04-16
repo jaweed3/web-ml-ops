@@ -12,7 +12,7 @@ def model_info(request: Request) -> ModelInfoResponse:
     try:
         runner = get_runner()
     except RuntimeError as exc:
-        raise HTTPException(status_code=503, detail=str(exc))
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
 
     return ModelInfoResponse(
         name=request.app.state.model_name,
@@ -29,4 +29,4 @@ def model_version() -> ModelVersionResponse:
     try:
         return ModelVersionResponse(version=get_runner().version)
     except RuntimeError as exc:
-        raise HTTPException(status_code=503, detail=str(exc))
+        raise HTTPException(status_code=503, detail=str(exc)) from exc

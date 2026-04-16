@@ -6,9 +6,9 @@ import cv2
 import numpy as np
 import onnxruntime as ort
 
-from core.logger import get_logger
 from core.config import load_config
-from core.mlflow_client import log_metrics, log_artifact
+from core.logger import get_logger
+from core.mlflow_client import log_artifact, log_metrics
 
 log = get_logger("stage4_benchmark")
 N_SAMPLES = 100
@@ -62,9 +62,11 @@ if __name__ == "__main__":
 
     for r in results:
         prefix = r["format"]
-        log_metrics({
-            f"{prefix}_mean_latency_ms": r["mean_latency_ms"],
-            f"{prefix}_p95_latency_ms": r["p95_latency_ms"],
-            f"{prefix}_model_size_mb": r["model_size_mb"],
-        })
+        log_metrics(
+            {
+                f"{prefix}_mean_latency_ms": r["mean_latency_ms"],
+                f"{prefix}_p95_latency_ms": r["p95_latency_ms"],
+                f"{prefix}_model_size_mb": r["model_size_mb"],
+            }
+        )
     log_artifact(str(report_path))

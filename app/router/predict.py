@@ -53,9 +53,9 @@ async def predict(request: Request, file: UploadFile = File(...)) -> PredictResp
     try:
         result = pipeline.run(image_bytes)
     except ValueError as exc:
-        raise HTTPException(status_code=422, detail=str(exc))
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     except RuntimeError as exc:
-        raise HTTPException(status_code=503, detail=str(exc))
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
 
     log.info(
         "prediction_served",

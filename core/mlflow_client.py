@@ -1,8 +1,11 @@
 import os
-import mlflow
+
 import dagshub
+import mlflow
 from dotenv import load_dotenv
+
 load_dotenv()
+
 
 def init_mlflow(experiment_name: str) -> None:
     username = os.getenv("DAGSHUB_USERNAME")
@@ -14,7 +17,7 @@ def init_mlflow(experiment_name: str) -> None:
         return
     mlflow.set_experiment(experiment_name)
     mlflow.start_run()
-        
+
 
 def log_params(params: dict) -> None:
     mlflow.log_params(params)

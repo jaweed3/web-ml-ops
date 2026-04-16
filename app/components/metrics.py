@@ -21,8 +21,6 @@ from prometheus_client import (
     Gauge,
     Histogram,
     Info,
-    REGISTRY,
-    CollectorRegistry,
 )
 
 # ── Request-level metrics ────────────────────────────────────────────────────
@@ -68,6 +66,7 @@ STARTUP_TIMESTAMP = Gauge(
 
 
 # ── Helper ────────────────────────────────────────────────────────────────────
+
 
 def record_model_ready(version: str, fmt: str) -> None:
     """Call once at startup after the model session is initialized."""

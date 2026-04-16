@@ -29,24 +29,24 @@ class ONNXRunner:
     """
 
     def __init__(self, model_path: Path, version: str, n_threads: int = ORT_INTRA_THREADS) -> None:
-        self.version   = version
+        self.version = version
         self.loaded_at: float | None = None
-        self._lock     = threading.Lock()
+        self._lock = threading.Lock()
 
         log.info("session_init", path=str(model_path), version=version)
 
         opts = ort.SessionOptions()
         opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
-        opts.intra_op_num_threads     = n_threads
+        opts.intra_op_num_threads = n_threads
 
-        self._session     = ort.InferenceSession(
+        self._session = ort.InferenceSession(
             str(model_path),
             sess_options=opts,
             providers=ORT_PROVIDERS,
         )
-        self._input_name  = self._session.get_inputs()[0].name
+        self._input_name = self._session.get_inputs()[0].name
         self._input_shape = self._session.get_inputs()[0].shape
-        self.loaded_at    = time.time()
+        self.loaded_at = time.time()
 
         log.info(
             "session_ready",
@@ -95,9 +95,7 @@ _runner: ONNXRunner | None = None
 
 def get_runner() -> ONNXRunner:
     if _runner is None:
-        raise RuntimeError(
-            "ONNXRunner not initialized — call init_runner() at application startup"
-        )
+        raise RuntimeError("ONNXRunner not initialized — call init_runner() at application startup")
     return _runner
 
 

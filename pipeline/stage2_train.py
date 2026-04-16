@@ -1,31 +1,37 @@
 import time
 
-from core.logger import get_logger
 from core.config import load_config
-from core.mlflow_client import init_mlflow, log_params, log_metrics, log_artifact
+from core.logger import get_logger
+from core.mlflow_client import init_mlflow, log_artifact, log_metrics, log_params
 
 log = get_logger("stage2_train")
 
 
 def train(cfg) -> str:
     from ultralytics import YOLO
+
     init_mlflow(experiment_name="rescuevision-yolov8n")
 
-    log.info("training_start", extra={
-        "device":cfg.train.device, 
-        "model":cfg.model.name, 
-        "epochs":cfg.train.epochs,
-    })
-    
-    log_params({
-        "model":     cfg.model.name,
-        "epochs":    cfg.train.epochs,
-        "imgsz":     cfg.train.imgsz,
-        "batch":     cfg.train.batch,
-        "lr0":       cfg.train.lr0,
-        "optimizer": cfg.train.optimizer,
-        "device":    cfg.train.device,
-    })
+    log.info(
+        "training_start",
+        extra={
+            "device": cfg.train.device,
+            "model": cfg.model.name,
+            "epochs": cfg.train.epochs,
+        },
+    )
+
+    log_params(
+        {
+            "model": cfg.model.name,
+            "epochs": cfg.train.epochs,
+            "imgsz": cfg.train.imgsz,
+            "batch": cfg.train.batch,
+            "lr0": cfg.train.lr0,
+            "optimizer": cfg.train.optimizer,
+            "device": cfg.train.device,
+        }
+    )
 
     model = YOLO(cfg.model.name)
     t0 = time.time()
@@ -55,9 +61,9 @@ def train(cfg) -> str:
     log_metrics(metrics)
     log.info("training_complete", extra=metrics)
 
-    checkpoint_path = str(results.save_dir / "weights"/"best.pt")
+    checkpoint_path = str(results.save_dir / "weights" / "best.pt")
     log_artifact(checkpoint_path)
-    log.info("checkpoint_logged", extra={"path":checkpoint_path})
+    log.info("checkpoint_logged", extra={"path": checkpoint_path})
 
     return checkpoint_path
 
