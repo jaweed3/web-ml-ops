@@ -5,35 +5,42 @@
 | Requirement | Version | Notes |
 |---|---|---|
 | Python | 3.10+ | Use pyenv or conda |
+| uv | latest | Package manager — `pip install uv` |
 | Git | any | — |
 | DagsHub account | — | Free — used for MLflow tracking + DVC remote |
-| Docker + Docker Compose | any | Only needed for serving stack |
+| Docker + Docker Compose | any | Only needed for the serving stack |
 
 ---
 
 ## Install
 
-Dependencies dibagi dua tergantung mesin yang dipakai.
+Dependencies are split by machine type. All installs use `uv`.
 
-### Base install — semua mesin
+### Dev install — all machines
 
-Tidak ada torch, tidak ada ultralytics. Cocok untuk:
-- Laptop i3 (debug, serve tests, code editing)
-- Mac Mini M4 (debug serving layer, jalankan test_export / test_benchmark kalau artifacts sudah ada)
+No torch, no ultralytics. Covers: debug mode, serving tests, code editing, running export/benchmark if artifacts already exist.
 
 ```bash
-git clone https://github.com/your-username/rescuevision-mlops
-cd rescuevision-mlops
-make install   # pip install -r requirements.txt
+make install-dev
+# equivalent: uv sync --only-group dev
 ```
 
 ### Training install — GPU machine only
 
-Tambahan: ultralytics (narik torch ~2GB) + tensorflow (TFLite export).  
-Jalankan ini hanya di RTX 4060 lab atau Mac Mini M4 kalau mau train lokal.
+Adds ultralytics (~2 GB torch) and tensorflow (TFLite export). Run this only on RTX 4060 lab or Mac Mini M4 if you want to train locally.
 
 ```bash
-make install-train   # pip install -r requirements.txt -r requirements-train.txt
+make install-train
+# equivalent: uv sync --all-groups
+```
+
+### Debug install — CPU dev with torch
+
+Adds CPU-only torch, matplotlib, and ipykernel. Useful for local logic testing and notebooks.
+
+```bash
+make install-debug
+# equivalent: uv sync --group dev --group debug
 ```
 
 ### Code quality hooks
@@ -45,29 +52,25 @@ make pre-commit-install
 
 ---
 
-## Device setup per mesin
+## Device setup per machine
 
-| Mesin | Install | `device` di train_config.yaml |
+| Machine | Install | `device` in train_config.yaml |
 |---|---|---|
-| Laptop i3 gen 7 | base only | — (tidak perlu train) |
-| Mac Mini M4 | base atau install-train | `mps` |
-| PC lab RTX 4060 | install-train | `cuda` |
+| Laptop i3 gen 7 | `install-dev` | — (no training) |
+| Mac Mini M4 | `install-dev` or `install-train` | `mps` |
+| PC lab RTX 4060 | `install-train` | `cuda` |
 
 Edit `configs/train_config.yaml`:
 ```yaml
 train:
-  device: cuda   # ganti ke mps untuk Mac Mini M4
+  device: cuda   # or mps for Mac Mini M4, cpu as fallback
 ```
 
 ---
 
 ## Environment variables
 
-Copy the example file and fill in your credentials:
-
-```bash
-cp .env.example .env
-```
+Create a `.env` file in the repo root:
 
 ```bash
 # .env
@@ -91,6 +94,32 @@ export $(cat .env | xargs)
 ```
 
 > Never commit `.env`. It is already in `.gitignore`.
+
+---
+
+## Debug mode
+
+Set `DEBUG_MODE=true` to skip DVC pull and generate a small synthetic dataset instead. Stages run with reduced epochs/imgsz/batch so the full flow can be validated on any machine without GPU or DagsHub credentials.
+
+```bash
+DEBUG_MODE=true uv run python -m pipeline.stage1_data
+DEBUG_MODE=true uv run python -m pipeline.stage2_train
+DEBUG_MODE=true uv run python -m pipeline.stage3_export
+
+# Or run all three in one shot:
+make debug
+```
+
+Debug overrides are set in `configs/train_config.yaml` under the `debug:` key:
+
+```yaml
+debug:
+  epochs: 1
+  imgsz: 320
+  batch: 4
+  device: cpu
+  max_samples: 50
+```
 
 ---
 

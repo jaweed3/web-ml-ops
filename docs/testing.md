@@ -29,18 +29,18 @@ Level 4 — Smoke test (requires running server)
 ## Prerequisites
 
 ```bash
-make install   # base deps — cukup untuk Level 1, 2, dan sebagian Level 3
+make install-dev   # base deps — cukup untuk Level 1, 2, dan sebagian Level 3
 ```
 
 Level 3 tests yang butuh ultralytics/tensorflow di-**skip otomatis** kalau package tidak terinstall — tidak error, hanya `SKIPPED`.
 
 | Level | Deps | Laptop i3 | Mac Mini M4 | RTX 4060 lab |
 |---|---|---|---|---|
-| 1 — Unit | base | ✅ | ✅ | ✅ |
-| 2 — API | base | ✅ | ✅ | ✅ |
-| 3 — Pipeline (data, export, benchmark, register) | base + artifacts | ⚠️ bisa kalau artifacts dicopy | ✅ | ✅ |
-| 3 — Pipeline (train) | install-train | ❌ | ✅ (MPS) | ✅ (CUDA) |
-| 4 — Smoke | base + server running | ✅ | ✅ | ✅ |
+| 1 — Unit | `install-dev` | ✅ | ✅ | ✅ |
+| 2 — API | `install-dev` | ✅ | ✅ | ✅ |
+| 3 — Pipeline (data, export, benchmark, register) | `install-dev` + artifacts | ⚠️ bisa kalau artifacts dicopy | ✅ | ✅ |
+| 3 — Pipeline (train) | `install-train` | ❌ | ✅ (MPS) | ✅ (CUDA) |
+| 4 — Smoke | `install-dev` + server running | ✅ | ✅ | ✅ |
 
 ---
 
@@ -175,7 +175,7 @@ export $(cat .env | xargs)
 dvc pull
 
 # Jalankan full pipeline
-make all
+dvc repro
 ```
 
 ---
@@ -332,10 +332,10 @@ Results: 9 passed, 0 failed
 ## Jalankan semuanya sekaligus
 
 ```bash
-# Level 1 + 2 (tidak butuh model)
+# Level 1 + 2 (tidak butuh model — cukup install-dev)
 make test-serve
 
-# Level 3 (butuh dataset + artifacts)
+# Level 3 (butuh dataset + artifacts — jalankan dvc repro dulu)
 make test-pipeline
 
 # Semua (Level 1 + 2 + 3)
