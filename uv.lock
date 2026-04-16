@@ -3883,6 +3883,22 @@ wheels = [
 ]
 
 [[package]]
+name = "onnxslim"
+version = "0.1.91"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "colorama" },
+    { name = "ml-dtypes" },
+    { name = "onnx" },
+    { name = "packaging" },
+    { name = "sympy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/6e/75/da4685c96ddf8117872ed05f93a5e5b48b32d9b2994566ebf46bae2ff091/onnxslim-0.1.91.tar.gz", hash = "sha256:3222fcd9a16836a4e7917e1dc55ddf4db492dadca3f469a1fa9226f92c4a2c6e", size = 595498, upload-time = "2026-04-11T16:48:03.481Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/81/5c/361b2a95d22b657c41ea5014e197ff9c3adc0e99accf411846d000e70785/onnxslim-0.1.91-py3-none-any.whl", hash = "sha256:1fdb23ca56ca3f9d12ff7b9ae1c779184468eaf911baea0930ac254b49c93ac9", size = 237448, upload-time = "2026-04-11T16:48:02.236Z" },
+]
+
+[[package]]
 name = "opencv-python"
 version = "4.13.0.92"
 source = { registry = "https://pypi.org/simple" }
@@ -5332,6 +5348,7 @@ dependencies = [
     { name = "onnx" },
     { name = "onnxruntime", version = "1.24.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "onnxruntime", version = "1.24.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "onnxslim" },
     { name = "opencv-python-headless" },
     { name = "pandas" },
     { name = "pillow" },
@@ -5340,6 +5357,7 @@ dependencies = [
     { name = "pydantic-settings" },
     { name = "python-multipart" },
     { name = "pyyaml" },
+    { name = "rich" },
     { name = "uvicorn", extra = ["standard"] },
 ]
 
@@ -5379,6 +5397,7 @@ requires-dist = [
     { name = "numpy", specifier = ">=1.24.0" },
     { name = "onnx", specifier = ">=1.15.0" },
     { name = "onnxruntime", specifier = ">=1.17.0" },
+    { name = "onnxslim", specifier = ">=0.1.91" },
     { name = "opencv-python-headless", specifier = ">=4.9.0" },
     { name = "pandas", specifier = ">=2.0.0" },
     { name = "pillow", specifier = ">=10.0.0" },
@@ -5387,6 +5406,7 @@ requires-dist = [
     { name = "pydantic-settings", specifier = ">=2.3.0" },
     { name = "python-multipart", specifier = ">=0.0.9" },
     { name = "pyyaml", specifier = ">=6.0" },
+    { name = "rich", specifier = ">=15.0.0" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.30.0" },
 ]
 
