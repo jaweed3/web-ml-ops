@@ -1,142 +1,123 @@
-# 🚀 End-to-End MLOps Pipeline Template
+# RescueVision MLOps
 
-![Python](https://img.shields.io/badge/Python-3.10-blue?style=for-the-badge&logo=python&logoColor=white)
-![Docker](https://img.shields.io/badge/Docker-Containerized-2496ED?style=for-the-badge&logo=docker&logoColor=white)
-![Next.js](https://img.shields.io/badge/Frontend-Next.js-black?style=for-the-badge&logo=next.js&logoColor=white)
-![MLflow](https://img.shields.io/badge/MLOps-MLflow-0194E2?style=for-the-badge&logo=mlflow&logoColor=white)
-![DagsHub](https://img.shields.io/badge/Storage-DagsHub-green?style=for-the-badge)
-
-A robust, production-ready MLOps project template designed for scalability and automation. This architecture decouples **Model Training**, **Inference Serving**, and **User Interface** into isolated microservices.
-
----
-
-## 🏗 Architecture Overview
-
-1.  **Training Pipeline (Python/DVC):** Modular pipeline (`main.py`) that handles Data Ingestion, Transformation, Training, and Evaluation.
-2.  **Model Registry (DagsHub/MLflow):** Successfully trained models are versioned and uploaded to a remote S3 bucket via DagsHub.
-3.  **Backend (Flask + Gunicorn):** A containerized API that downloads the production model from the cloud and serves predictions.
-4.  **Frontend (Next.js):** A clean, responsive UI for end-users to interact with the model.
-5.  **CI/CD (GitHub Actions):** Automated training and reporting triggered by git push events.
-
----
-
-## 🛠️ Tech Stack
-
-* **Language:** Python 3.10, Node.js 18
-* **Orchestration:** Docker & Docker Compose
-* **Tracking & Registry:** MLflow (Remote DagsHub)
-* **Backend:** Flask (Production Server: Gunicorn)
-* **Frontend:** Next.js (Standalone Output)
-* **CI/CD:** GitHub Actions (CML)
-
----
-
-## 🚀 Quick Start (Local Development)
-
-### Prerequisites
-* Docker Desktop / Docker Engine
-* Git
-
-### 1. Clone the Repository
-```bash
-git clone [https://github.com/your-username/your-repo-name.git](https://github.com/your-username/your-repo-name.git)
-cd your-repo-name
+End-to-end ML pipeline for SAR victim detection — from versioned dataset to edge-ready model artifacts and a production inference server.
 
 ```
+dataset (DVC)
+  → train YOLOv8n (MLflow)
+  → export ONNX FP32 / INT8 + TFLite INT8
+  → benchmark + metric gate
+  → MLflow Model Registry (Staging → Production)
+  → FastAPI inference server
+  → Prometheus + Grafana
+```
 
-### 2. Configure Environment Variables
+> **Testing status:** Stage 3 (export & quantization) is verified. Stages 1, 2, 4, 5 and the serving layer are implemented but not yet end-to-end tested.
 
-Create a `.env` file in the **root directory**. You can copy the template:
+---
+
+## Artifacts produced
+
+| File | Format | Target |
+|---|---|---|
+| `artifacts/model.onnx` | ONNX FP32 | Laptop / Raspberry Pi |
+| `artifacts/model_int8.onnx` | ONNX INT8 | Edge CPU |
+| `artifacts/model_int8.tflite` | TFLite INT8 | Raspberry Pi / mobile |
+| `artifacts/benchmark_report.json` | JSON | CI gate + MLflow |
+
+---
+
+## Quickstart
+
+Requires [uv](https://docs.astral.sh/uv/).
 
 ```bash
-cp .env.example .env
+git clone <your-repo-url>
+cd rescuevision-mlops
 
+# Install base deps (no torch, no ultralytics)
+make install-dev
+
+# Create .env and fill in your DagsHub credentials
+cp .env .env.local   # or create .env from scratch — see docs/setup.md
+
+# Run the full ML pipeline via DVC
+dvc repro
+
+# Start the inference server + monitoring stack
+make up
 ```
 
-Fill in your DagsHub credentials (Required for model downloading):
+Server → http://localhost:8080/docs  
+Grafana → http://localhost:3000 (admin / rescuevision)
 
-```env
-MLFLOW_TRACKING_URI=[https://dagshub.com/](https://dagshub.com/)<username>/<repo>.mlflow
-MLFLOW_TRACKING_USERNAME=<your-dagshub-username>
-MLFLOW_TRACKING_PASSWORD=<your-dagshub-password-or-token>
-DAGSHUB_REPO_OWNER=<your-dagshub-username>
-DAGSHUB_REPO_NAME=<your-dagshub-repo-name>
-DAGSHUB_USER_TOKEN=<your-dagshub-access-token>
+---
 
-```
-
-> **Note:** The `DAGSHUB_USER_TOKEN` is critical for containerized authentication without browser interaction.
-
-### 3. Launch with Docker Compose
-
-Run the entire stack (Backend + Frontend) with a single command:
+## Running individual pipeline stages
 
 ```bash
-docker-compose up --build
+# Stage 1 — data pull + validation
+uv run python -m pipeline.stage1_data
 
-```
+# Stage 2 — training (requires make install-train)
+uv run python -m pipeline.stage2_train
 
-### 4. Access the Application
+# Stage 3 — export & quantization (verified)
+uv run python -m pipeline.stage3_export
 
-* **Frontend UI:** [http://localhost:3000](https://www.google.com/search?q=http://localhost:3000)
-* **Backend API:** [http://localhost:8080](https://www.google.com/search?q=http://localhost:8080)
-* **MLflow UI:** [https://dagshub.com](https://dagshub.com) (Check your repo)
+# Stage 4 — benchmark
+uv run python -m pipeline.stage4_benchmark
 
----
+# Stage 5 — register to MLflow
+uv run python -m pipeline.stage5_register
 
-## 🔄 MLOps Workflow
-
-### Manual Training (Local)
-
-To retrain the model locally and push artifacts to DagsHub:
-
-```bash
-cd backend
-# Ensure env vars are set
-python main.py
-
-```
-
-### Automated Training (CI/CD)
-
-This project is configured with **GitHub Actions**.
-
-1. Push changes to the `main` branch.
-2. The pipeline will automatically provision a runner.
-3. It executes `main.py`, trains the model, and uploads the new version to DagsHub Registry.
-
----
-
-## 📂 Project Structure
-
-```
-├── .github/workflows   # CI/CD Pipeline (CML)
-├── backend             # Python ML Pipeline & Flask API
-│   ├── artifacts       # Local artifacts (ignored by git)
-│   ├── config          # Pipeline configurations
-│   ├── src             # Source code (Components & Pipelines)
-│   ├── app.py          # Flask Entrypoint
-│   ├── main.py         # Training Orchestrator
-│   └── Dockerfile      # Backend Container Config
-├── frontend            # Next.js Application
-│   ├── src             # React Components
-│   └── Dockerfile      # Frontend Container Config
-├── docker-compose.yaml # Orchestration
-└── requirements.txt    # Python Dependencies
-
+# Debug mode — runs stages 1-3 with dummy data, no GPU required
+make debug
 ```
 
 ---
 
-## 🔮 Future Roadmap
+## Documentation
 
-* [ ] Implement Unit Testing (`pytest`) for data validation.
-* [ ] Add Prometheus & Grafana for system & model monitoring.
-* [ ] Deploy to AWS EC2 / Kubernetes.
+| Doc | What's in it |
+|---|---|
+| [docs/setup.md](docs/setup.md) | Prerequisites, install, env vars, DVC remote |
+| [docs/pipeline.md](docs/pipeline.md) | Phase 1 — stages 1-5 reference |
+| [docs/serving.md](docs/serving.md) | Phase 2 — API reference, Docker, architecture |
+| [docs/monitoring.md](docs/monitoring.md) | Prometheus metrics, Grafana dashboard |
+| [docs/testing.md](docs/testing.md) | How to test everything, start to finish |
+| [docs/ci-cd.md](docs/ci-cd.md) | CI/CD jobs, environments, secrets |
+| [docs/architecture.md](docs/architecture.md) | Architecture decisions and trade-offs |
 
 ---
 
-## 👨‍💻 Author
+## Repo layout
 
-**Fatih Jawwad** - *Machine Learning Engineer*
-
+```
+rescuevision-mlops/
+├── pipeline/          # Stage 1-5 scripts
+├── core/              # Logger, config loader, MLflow helpers
+├── app/               # FastAPI serving layer
+│   ├── components/    # ModelLoader, Preprocessor, Postprocessor, Runner, Metrics
+│   ├── config/        # ConfigurationManager
+│   ├── constant/      # All constants
+│   ├── entity/        # Dataclass config entities
+│   ├── pipeline/      # PredictionPipeline
+│   ├── router/        # FastAPI routes
+│   ├── schema/        # Pydantic request/response models
+│   ├── middleware/     # Request logger + metrics hook
+│   └── utils/         # Shared utilities
+├── configs/           # train_config.yaml, serve_config.yaml
+├── monitoring/        # Prometheus scrape config + Grafana provisioning
+├── tests/
+│   ├── serve/         # API + component unit tests
+│   ├── test_data.py
+│   ├── test_export.py
+│   └── test_benchmark.py
+├── research/          # Jupyter notebooks
+├── scripts/           # smoke_test.sh
+├── docs/              # All documentation
+├── dvc.yaml           # Pipeline DAG
+├── pyproject.toml     # Ruff, mypy, pytest config
+└── .pre-commit-config.yaml
+```

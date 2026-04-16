@@ -1,0 +1,6 @@
+names:
+- person
+nc: 1
+path: /Users/wedjaw/project/web-ml-ops/data/coco_person
+train: images/train
+val: images/val
