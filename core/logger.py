@@ -28,7 +28,7 @@ def _make_rich_handler() -> logging.Handler:
         show_path=False,
         rich_tracebacks=True,
         tracebacks_show_locals=False,
-        log_time_format="[%H:%M:%S]"
+        log_time_format="[%H:%M:%S]",
         markup=True
     )
 
@@ -43,7 +43,7 @@ def _make_plain_handler() -> logging.Handler:
 class StructuredLogger(logging.Logger):
     def _log_structured(self, level, event, **kwargs):
         extra = "  ".join(f"[dim]{k}[/dim]=[cyan]{v}[/cyan]" for k, v in kwargs.items())
-        msg = f"str{event}" + (f"{extra}" if extra else "")
+        msg = f"{event}" + (f"{extra}" if extra else "")
         record = self.makeRecord(self.name, level, "", 0, msg, (), None)
         self.handle(record)
 
@@ -60,7 +60,7 @@ class StructuredLogger(logging.Logger):
     def error(self, msg, *args, **kwargs):
         extra = kwargs.pop("extra", {})
         if args: msg = msg % args
-        self._log_structured(logging.ERROR, msg, **kwargs)
+        self._log_structured(logging.ERROR, msg, **extra)
 
 
 _USE_JSON = os.getenv("LOG_FORMAT", "").lower == "json"
@@ -80,6 +80,7 @@ class JSONFormatter(logging.Formatter):
 def get_logger(name: str) -> StructuredLogger:
     logging.setLoggerClass(StructuredLogger)
     logger = logging.getLogger(name)
+    logger.propagate = False
 
     if not logger.handlers: 
         if _USE_JSON:
