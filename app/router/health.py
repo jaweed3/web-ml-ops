@@ -18,7 +18,9 @@ def health() -> HealthResponse:
     )
 
 
-@router.get("/ready", response_model=ReadyResponse, responses={503: {"description": "Model not ready"}})
+@router.get(
+    "/ready", response_model=ReadyResponse, responses={503: {"description": "Model not ready"}}
+)
 def ready():
     """
     Readiness probe — returns 200 only if the model is loaded and ready.

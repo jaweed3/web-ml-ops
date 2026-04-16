@@ -15,6 +15,7 @@ CHECKPOINT = Path("runs/train/weights/best.pt")
 
 # ── Checkpoint ────────────────────────────────────────────────────────────────
 
+
 def test_checkpoint_exists():
     assert CHECKPOINT.exists(), "best.pt not found — run `make train` first"
 
@@ -27,7 +28,9 @@ def test_checkpoint_not_empty():
 
 def test_checkpoint_is_loadable():
     """Verify the checkpoint can be loaded by Ultralytics without errors."""
-    pytest.importorskip("ultralytics", reason="ultralytics not installed — skipping (training machine only)")
+    pytest.importorskip(
+        "ultralytics", reason="ultralytics not installed — skipping (training machine only)"
+    )
     from ultralytics import YOLO
 
     model = YOLO(str(CHECKPOINT))
@@ -35,6 +38,7 @@ def test_checkpoint_is_loadable():
 
 
 # ── MLflow experiment ─────────────────────────────────────────────────────────
+
 
 @pytest.fixture(scope="module")
 def mlflow_runs():
@@ -61,9 +65,7 @@ def test_mlflow_run_exists(mlflow_runs):
 
 
 def test_mlflow_run_has_map50(mlflow_runs):
-    assert "metrics.mAP50" in mlflow_runs.columns, (
-        "mAP50 not logged — check stage2_train.py"
-    )
+    assert "metrics.mAP50" in mlflow_runs.columns, "mAP50 not logged — check stage2_train.py"
 
 
 def test_mlflow_map50_above_minimum(mlflow_runs):
@@ -86,6 +88,7 @@ def test_mlflow_run_has_training_params(mlflow_runs):
 def test_mlflow_checkpoint_artifact_logged(mlflow_runs):
     """The best.pt artifact should be logged in at least one run."""
     import mlflow
+
     latest_run_id = mlflow_runs.iloc[0]["run_id"]
     client = mlflow.MlflowClient()
     artifacts = [a.path for a in client.list_artifacts(latest_run_id)]

@@ -1,27 +1,23 @@
-import subprocess
-import sys
-import random
 import os
+import random
+import subprocess
 from pathlib import Path
+
 from PIL import Image
 
-from core.logger import get_logger
-from core.config import load_config
 from app.utils.dummy_dataset import generate_dummy_data
 from app.utils.dummy_yaml import generate_dummy_yaml
+from core.config import load_config
+from core.logger import get_logger
 
 log = get_logger("stage1_data")
 
 
 def pull_dataset() -> None:
-    log.info("pulling_dataset", extra={
-        "source": "dagshub_dvc_remote"
-    })
+    log.info("pulling_dataset", extra={"source": "dagshub_dvc_remote"})
     result = subprocess.run(["dvc", "pull"], capture_output=True, text=True)
     if result.returncode != 0:
-        log.error("dvc_pull_failed", extra={ 
-            "stderr":result.stderr
-        })
+        log.error("dvc_pull_failed", extra={"stderr": result.stderr})
         raise RuntimeError(f"DVC pull failed:\n{result.stderr}")
     log.info("pull_complete")
 
@@ -48,8 +44,7 @@ def validate_dataset(data_dir: str = "data/") -> dict:
 
     if len(train_images) != len(train_labels):
         raise ValueError(
-            f"Image/label mismatch: {len(train_images)} images, "
-            f"{len(train_labels)} labels"
+            f"Image/label mismatch: {len(train_images)} images, {len(train_labels)} labels"
         )
 
     yaml_file = "dataset.yaml"
@@ -61,7 +56,7 @@ def validate_dataset(data_dir: str = "data/") -> dict:
         try:
             Image.open(img_path).verify()
         except Exception as e:
-            raise ValueError(f"Corrupt image detected: {img_path} — {e}")
+            raise ValueError(f"Corrupt image detected: {img_path} — {e}") from e
 
     stats = {
         "train_count": len(train_images),
@@ -71,14 +66,13 @@ def validate_dataset(data_dir: str = "data/") -> dict:
     log.info("your_dataset_is_valid", extra={**stats})
     return stats
 
+
 def run_stage():
     cfg = load_config()
     is_debug = os.getenv("DEBUG_MODE", "false").lower() == "true"
 
     if is_debug:
-        log.info("debug mode active ", extra={
-            "action":"generating dummy dataset"
-        })
+        log.info("debug mode active ", extra={"action": "generating dummy dataset"})
         generate_dummy_data(data_dir=cfg.data.dir)
         generate_dummy_yaml(output_dir=cfg.data.dir)
         validate_dataset(data_dir=cfg.data.dir)
@@ -86,7 +80,8 @@ def run_stage():
         pull_dataset()
         validate_dataset(data_dir=cfg.data.dir)
 
-def subset_dataset(data_dir: str, max_samples: int) ->  None:
+
+def subset_dataset(data_dir: str, max_samples: int) -> None:
     path = Path(data_dir)
 
     for split in ["train", "test"]:
@@ -104,7 +99,8 @@ def subset_dataset(data_dir: str, max_samples: int) ->  None:
             if lbl.stem not in keep:
                 lbl.unlink()
 
-    log.info("dataset subsetted : ", extra={"max_samples":max_samples})
+    log.info("dataset subsetted : ", extra={"max_samples": max_samples})
+
 
 if __name__ == "__main__":
     run_stage()

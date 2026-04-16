@@ -21,8 +21,14 @@ class DetectionSchema(BaseModel):
 
 class PredictResponse(BaseModel):
     model_version: str = Field(..., description="MLflow model version that produced this result")
-    model_format: str = Field(..., description="Artifact format: onnx_fp32 | onnx_int8 | tflite_int8")
-    inference_time_ms: float = Field(..., description="Pure ONNX inference time (excludes pre/post-processing)")
+    model_format: str = Field(
+        ..., description="Artifact format: onnx_fp32 | onnx_int8 | tflite_int8"
+    )
+    inference_time_ms: float = Field(
+        ..., description="Pure ONNX inference time (excludes pre/post-processing)"
+    )
     detections: list[DetectionSchema] = Field(default_factory=list)
     image_shape: list[int] = Field(..., description="[height, width] of the resized input tensor")
-    request_id: str = Field(..., description="Unique request identifier — present in response header X-Request-ID")
+    request_id: str = Field(
+        ..., description="Unique request identifier — present in response header X-Request-ID"
+    )

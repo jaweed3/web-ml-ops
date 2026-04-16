@@ -6,8 +6,8 @@ from typing import Any
 
 import yaml
 
-
 # ── File I/O ──────────────────────────────────────────────────────────────────
+
 
 def read_yaml(path: Path) -> dict:
     """Load a YAML file and return its contents as a dict."""
@@ -37,12 +37,14 @@ def ensure_dir(path: Path) -> Path:
 
 # ── ID helpers ────────────────────────────────────────────────────────────────
 
+
 def new_request_id(prefix: str = "req") -> str:
     """Generate a short unique request ID, e.g. ``req_a3f92b1c``."""
     return f"{prefix}_{uuid.uuid4().hex[:8]}"
 
 
 # ── Timing ────────────────────────────────────────────────────────────────────
+
 
 def elapsed_ms(start: float) -> float:
     """Return milliseconds elapsed since *start* (from ``time.perf_counter()``)."""
@@ -51,12 +53,14 @@ def elapsed_ms(start: float) -> float:
 
 # ── File size ────────────────────────────────────────────────────────────────
 
+
 def file_size_mb(path: Path) -> float:
     """Return file size in MB, rounded to 2 decimal places."""
     return round(path.stat().st_size / 1_000_000, 2)
 
 
 # ── Validation helpers ────────────────────────────────────────────────────────
+
 
 def assert_file_exists(path: Path, label: str = "file") -> None:
     """Raise FileNotFoundError with a clear message if *path* is missing."""

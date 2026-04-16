@@ -5,8 +5,8 @@ import numpy as np
 from app.constant import (
     CLASS_NAMES,
     DEFAULT_CONF_THRESHOLD,
-    DEFAULT_IOU_THRESHOLD,
     DEFAULT_IMGSZ,
+    DEFAULT_IOU_THRESHOLD,
     DEFAULT_MAX_DETECTIONS,
     PERSON_CLASS_ID,
 )
@@ -32,14 +32,14 @@ class DetectionPostprocessor:
 
     def __init__(
         self,
-        imgsz: int           = DEFAULT_IMGSZ,
+        imgsz: int = DEFAULT_IMGSZ,
         conf_threshold: float = DEFAULT_CONF_THRESHOLD,
-        iou_threshold: float  = DEFAULT_IOU_THRESHOLD,
-        max_detections: int   = DEFAULT_MAX_DETECTIONS,
+        iou_threshold: float = DEFAULT_IOU_THRESHOLD,
+        max_detections: int = DEFAULT_MAX_DETECTIONS,
     ) -> None:
-        self.imgsz          = imgsz
+        self.imgsz = imgsz
         self.conf_threshold = conf_threshold
-        self.iou_threshold  = iou_threshold
+        self.iou_threshold = iou_threshold
         self.max_detections = max_detections
 
     # ── public ────────────────────────────────────────────────────────────────
@@ -56,13 +56,13 @@ class DetectionPostprocessor:
         list[dict]
             Each element has keys: class_id, class_name, confidence, bbox.
         """
-        output = raw_output[0][0].T                   # [8400, 5]
+        output = raw_output[0][0].T  # [8400, 5]
 
-        boxes  = output[:, :4]                        # cx cy w h (normalised)
-        scores = output[:, 4]                         # objectness
+        boxes = output[:, :4]  # cx cy w h (normalised)
+        scores = output[:, 4]  # objectness
 
-        mask   = scores >= self.conf_threshold
-        boxes  = boxes[mask]
+        mask = scores >= self.conf_threshold
+        boxes = boxes[mask]
         scores = scores[mask]
 
         if len(boxes) == 0:
@@ -70,15 +70,15 @@ class DetectionPostprocessor:
             return []
 
         boxes_xyxy = self._cxcywh_to_xyxy(boxes)
-        keep       = self._nms(boxes_xyxy, scores)
-        keep       = keep[: self.max_detections]
+        keep = self._nms(boxes_xyxy, scores)
+        keep = keep[: self.max_detections]
 
         boxes_xyxy = boxes_xyxy[keep]
-        scores     = scores[keep]
+        scores = scores[keep]
 
         detections = [
             self._build_detection(box, score)
-            for box, score in zip(boxes_xyxy, scores)
+            for box, score in zip(boxes_xyxy, scores, strict=False)
         ]
         log.info("postprocess_ok", n_detections=len(detections))
         return detections
@@ -95,11 +95,11 @@ class DetectionPostprocessor:
 
     def _nms(self, boxes: np.ndarray, scores: np.ndarray) -> np.ndarray:
         order = scores.argsort()[::-1]
-        keep  = []
+        keep = []
         while order.size > 0:
             i = order[0]
             keep.append(i)
-            ious  = self._iou(boxes[i], boxes[order[1:]])
+            ious = self._iou(boxes[i], boxes[order[1:]])
             order = order[1:][ious <= self.iou_threshold]
         return np.array(keep, dtype=np.intp)
 
@@ -117,14 +117,17 @@ class DetectionPostprocessor:
     def _build_detection(self, box: np.ndarray, score: float) -> dict[str, Any]:
         x1, y1, x2, y2 = map(int, box)
         return {
-            "class_id":   PERSON_CLASS_ID,
+            "class_id": PERSON_CLASS_ID,
             "class_name": CLASS_NAMES[PERSON_CLASS_ID],
             "confidence": round(float(score), 4),
             "bbox": {
-                "x1": x1, "y1": y1, "x2": x2, "y2": y2,
-                "cx":     (x1 + x2) // 2,
-                "cy":     (y1 + y2) // 2,
-                "width":  x2 - x1,
+                "x1": x1,
+                "y1": y1,
+                "x2": x2,
+                "y2": y2,
+                "cx": (x1 + x2) // 2,
+                "cy": (y1 + y2) // 2,
+                "width": x2 - x1,
                 "height": y2 - y1,
             },
         }

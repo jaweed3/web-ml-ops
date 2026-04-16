@@ -15,11 +15,12 @@ ARTIFACTS = {
     "tflite_int8": Path("artifacts/model_int8.tflite"),
 }
 
-# Expected YOLOv8n output shape for 640×640 input
+# Expected YOLOv8n output shape for 640x640 input
 EXPECTED_OUTPUT_SHAPE = (1, 5, 8400)
 DUMMY_INPUT = np.zeros((1, 3, 640, 640), dtype=np.float32)
 
 # ── Existence ─────────────────────────────────────────────────────────────────
+
 
 @pytest.mark.parametrize("key,path", ARTIFACTS.items())
 def test_artifact_exists(key, path):
@@ -33,6 +34,7 @@ def test_artifact_not_empty(key, path):
 
 
 # ── Loadability ───────────────────────────────────────────────────────────────
+
 
 def test_onnx_fp32_loadable():
     ort = pytest.importorskip("onnxruntime")
@@ -50,13 +52,16 @@ def test_tflite_loadable():
     tf = pytest.importorskip("tensorflow", reason="tensorflow not installed — skipping TFLite test")
     tflite_path = ARTIFACTS["tflite_int8"]
     if not tflite_path.exists():
-        pytest.skip("model_int8.tflite not found — TFLite export may have been skipped on this machine")
+        pytest.skip(
+            "model_int8.tflite not found — TFLite export may have been skipped on this machine"
+        )
     interp = tf.lite.Interpreter(model_path=str(tflite_path))
     interp.allocate_tensors()
     assert interp is not None
 
 
 # ── Input / output shapes ─────────────────────────────────────────────────────
+
 
 def test_onnx_fp32_input_shape():
     ort = pytest.importorskip("onnxruntime")
@@ -97,6 +102,7 @@ def test_fp32_and_int8_output_shapes_match():
 
 # ── Inference sanity ──────────────────────────────────────────────────────────
 
+
 def test_onnx_fp32_output_is_finite():
     """Output should not contain NaN or Inf."""
     ort = pytest.importorskip("onnxruntime")
@@ -114,6 +120,7 @@ def test_onnx_int8_output_is_finite():
 
 # ── Size relationship ─────────────────────────────────────────────────────────
 
+
 def test_int8_smaller_than_fp32():
     fp32_mb = ARTIFACTS["onnx_fp32"].stat().st_size / 1_000_000
     int8_mb = ARTIFACTS["onnx_int8"].stat().st_size / 1_000_000
@@ -127,6 +134,4 @@ def test_int8_compression_ratio_reasonable():
     fp32_mb = ARTIFACTS["onnx_fp32"].stat().st_size / 1_000_000
     int8_mb = ARTIFACTS["onnx_int8"].stat().st_size / 1_000_000
     ratio = fp32_mb / int8_mb
-    assert ratio >= 1.5, (
-        f"Compression ratio {ratio:.2f}x too low — quantization may have failed"
-    )
+    assert ratio >= 1.5, f"Compression ratio {ratio:.2f}x too low — quantization may have failed"
