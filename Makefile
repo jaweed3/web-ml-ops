@@ -25,6 +25,9 @@ debug:
 	DEBUG_MODE=true uv run python -m pipeline.stage1_data
 	DEBUG_MODE=true uv run python -m pipeline.stage2_train
 	DEBUG_MODE=true uv run python -m pipeline.stage3_export
+	DEBUG_MODE=true uv run python -m pipeline.stage4_benchmark
+	DEBUG_MODE=true uv run python -m pipeline.stage5_register
+
 debug-train:
 	DEBUG_MODE=true uv run python -m pipeline.stage2_train
 
