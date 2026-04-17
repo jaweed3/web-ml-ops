@@ -1,3 +1,4 @@
+import argparse
 import json
 import subprocess
 from pathlib import Path
@@ -7,7 +8,7 @@ from core.mlflow_client import init_mlflow, register_model
 
 log = get_logger("stage5_register")
 DEGRADATION_THRESHOLD = 0.97
-
+parser = argparse.ArgumentParser()
 
 def load_benchmark() -> dict:
     return json.loads(Path("artifacts/benchmark_report.json").read_text())
@@ -45,6 +46,9 @@ def get_git_hash() -> str:
 
 
 if __name__ == "__main__":
+    parser.add_argument("--staging", default="None", choices=["Staging", "None", "Production"])
+    args = parser.parse_args()
+
     init_mlflow(experiment_name="rescuevision-yolov8n")
     report = load_benchmark()
 
@@ -53,7 +57,7 @@ if __name__ == "__main__":
         raise SystemExit(1)
 
     git_hash = get_git_hash()
-    tags = {"git_commit": git_hash, "pipeline": "rescuevision-mlops"}
+    tags = {"git_commit": git_hash, "pipeline": "rescuevision-mlops", "stage": args.stage}
 
     artifacts = [
         ("artifacts/model.onnx", "rescuevision-onnx-fp32"),
@@ -62,4 +66,9 @@ if __name__ == "__main__":
     ]
     for path, name in artifacts:
         register_model(path, name, tags)
-        log.info("model_registered", name=name, path=path, git_hash=git_hash)
+        log.info("model_registered", extra={
+            "name":name,
+            "path":path,
+            "git_hash":git_hash,
+            "stage": args.stage
+        })

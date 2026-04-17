@@ -3,8 +3,8 @@ from pathlib import Path
 
 import dagshub
 import mlflow
-from mlflow.tracking import MlflowClient
 from dotenv import load_dotenv
+from mlflow.tracking import MlflowClient
 
 load_dotenv()
 

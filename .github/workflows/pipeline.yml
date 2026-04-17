@@ -15,7 +15,7 @@ on:
         options: ["false", "true"]
 
 env:
-  PYTHON_VERSION: "3.10"
+  PYTHON_VERSION: "3.12"
 
 # ── Job 1: Lint + type-check (all branches) ──────────────────────────────────
 jobs:
