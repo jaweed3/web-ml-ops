@@ -3,7 +3,7 @@ import subprocess
 from pathlib import Path
 
 from core.logger import get_logger
-from core.mlflow_client import register_model
+from core.mlflow_client import init_mlflow, register_model
 
 log = get_logger("stage5_register")
 DEGRADATION_THRESHOLD = 0.97
@@ -45,6 +45,7 @@ def get_git_hash() -> str:
 
 
 if __name__ == "__main__":
+    init_mlflow(experiment_name="rescuevision-yolov8n")
     report = load_benchmark()
 
     if not metric_gate(report):
