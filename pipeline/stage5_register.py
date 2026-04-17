@@ -25,13 +25,13 @@ def metric_gate(report: dict) -> bool:
     ratio = int8_map / fp32_map if fp32_map > 0 else 1.0
     passed = ratio >= DEGRADATION_THRESHOLD
     log.info(
-        "metric_gate",
-        fp32_mAP50=fp32_map,
-        int8_mAP50=int8_map,
-        ratio=round(ratio, 4),
-        threshold=DEGRADATION_THRESHOLD,
-        passed=passed,
-    )
+        "metric_gate", extra={
+        "fp32_mAP50":fp32_map,
+        "int8_mAP50":int8_map,
+        "ratio":round(ratio, 4),
+        "threshold":DEGRADATION_THRESHOLD,
+        "passed":passed,
+    })
     return passed
 
 

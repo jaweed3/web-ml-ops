@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 import dagshub
 import mlflow
@@ -32,7 +33,8 @@ def log_artifact(path: str) -> None:
 
 
 def register_model(artifact_path: str, name: str, tags: dict) -> None:
+    artifact_name = Path(artifact_path).name
     mlflow.log_artifact(artifact_path)
     run_id = mlflow.active_run().info.run_id
-    model_uri = f"runs:/{run_id}/{artifact_path}"
+    model_uri = f"runs:/{run_id}/{artifact_name}"
     mlflow.register_model(model_uri=model_uri, name=name, tags=tags)
