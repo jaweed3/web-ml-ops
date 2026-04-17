@@ -1,13 +1,13 @@
 import shutil
 from pathlib import Path
 
-import mlflow
 from onnxruntime.quantization import QuantType, quantize_dynamic
 from ultralytics import YOLO
 
 from core.config import load_config
 from core.logger import get_logger
-from core.mlflow_client import init_mlflow, log_artifact as mlflow_log
+from core.mlflow_client import init_mlflow
+from core.mlflow_client import log_artifact as mlflow_log
 
 log = get_logger("stage3_export")
 ARTIFACTS_DIR = Path("artifacts")
@@ -58,7 +58,7 @@ def export_tflite_int8(checkpoint: str, imgsz: int) -> Path | None:
 
     model = YOLO(checkpoint)
     try:
-        model.export(format="tflite", imgsz=imgsz, int8=True)
+        model.export(format="tflite", imgsz=imgsz, int8=True, data=cfg.data.yaml)
     except AssertionError:
         pass
 
