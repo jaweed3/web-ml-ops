@@ -161,7 +161,7 @@ jobs:
               "rescuevision-tflite-int8",
           ]
           for name in models:
-              versions = client.get_latest_versions(name, stages=["Staging"])
+              versions = client.search_model_versions(name, stages=["Staging"])
               if not versions:
                   print(f"No Staging version for {name}, skipping")
                   continue
