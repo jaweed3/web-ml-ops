@@ -6,6 +6,7 @@ from app.components.metrics import record_model_ready
 from app.components.model_loader import ModelLoader
 from app.components.runner import init_runner
 from app.config.configuration import ConfigurationManager
+from app.entity.config_entity import InferenceConfig
 from app.middleware.request_logger import RequestLoggerMiddleware
 from app.pipeline.prediction_pipeline import PredictionPipeline
 from app.router import health, meta, metrics, predict
@@ -28,7 +29,14 @@ async def lifespan(app: FastAPI):
 
     try:
         loader = ModelLoader(dagshub_cfg, model_cfg, cache_cfg)
-        model_path, version = loader.load()
+        model_path, version, imgsz = loader.load()
+        int_cfg = InferenceConfig(
+            imgsz=imgsz,
+            conf_threshold=inf_cfg.conf_threshold,
+            iou_threshold=inf_cfg.iou_threshold,
+            max_detections=inf_cfg.max_detections,
+            n_threads=inf_cfg.n_threads
+        )
         init_runner(model_path, version, n_threads=inf_cfg.n_threads)
     except Exception as exc:
         log.error("startup_failed", error=str(exc))
