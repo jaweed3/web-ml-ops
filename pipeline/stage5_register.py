@@ -46,7 +46,7 @@ def get_git_hash() -> str:
 
 
 if __name__ == "__main__":
-    parser.add_argument("--staging", default="None", choices=["Staging", "None", "Production"])
+    parser.add_argument("--stage", default="None", choices=["Staging", "None", "Production"])
     args = parser.parse_args()
 
     init_mlflow(experiment_name="rescuevision-yolov8n")
