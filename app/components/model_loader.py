@@ -1,7 +1,8 @@
 import os
 from pathlib import Path
-import onnxruntime as ort
+
 import mlflow
+import onnxruntime as ort
 
 from app.entity.config_entity import CacheConfig, DagsHubConfig, ModelRegistryConfig
 from app.utils.common import ensure_dir
@@ -51,8 +52,8 @@ class ModelLoader:
         if not versions:
             raise RuntimeError(f"No registered versions found for model: {name}")
         resolved = versions[0].version
-        log.info("resolved_latest_version", extra={ 
-            "name":name, 
+        log.info("resolved_latest_version", extra={
+            "name":name,
             "version":resolved
         })
         return resolved
@@ -78,8 +79,8 @@ class ModelLoader:
         name = self._model.name
         version = self._resolve_version(name, self._model.version)
 
-        log.info("downloading_artifact", extra={ 
-            "name":name, 
+        log.info("downloading_artifact", extra={
+            "name":name,
             "version":version
         })
         model_uri = f"models:/{name}/{version}"
@@ -92,8 +93,8 @@ class ModelLoader:
         sess = ort.InferenceSession(str(onnx_path), providers=["CPUExecutionProvider"])
         imgsz = sess.get_inputs()[0].shape[2]
         log.info("artifact_cached", extra={
-            "path":str(onnx_path), 
-            "version":version, 
+            "path":str(onnx_path),
+            "version":version,
             "imgsz":imgsz
         })
         return onnx_path, version, imgsz
