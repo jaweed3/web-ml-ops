@@ -32,7 +32,7 @@ def client():
     """
     from app.main import app
 
-    dummy_output = np.zeros((1, 5, 8400), dtype=np.float32)
+    dummy_output = np.zeros((1, 5, 2100), dtype=np.float32)
     # Place one high-confidence box at centre
     dummy_output[0, 0, 0] = 0.5  # cx
     dummy_output[0, 1, 0] = 0.5  # cy
@@ -44,7 +44,7 @@ def client():
     mock_runner.is_ready = True
     mock_runner.version = "test-v1"
     mock_runner.loaded_at = 1_700_000_000.0
-    mock_runner.input_shape = [1, 3, 640, 640]
+    mock_runner.input_shape = [1, 3, 320, 320]
     mock_runner.run.return_value = ([dummy_output], 12.3, "req_test001")
 
     with (
@@ -64,7 +64,7 @@ def _make_pipeline():
     from app.pipeline.prediction_pipeline import PredictionPipeline
 
     cfg = InferenceConfig(
-        imgsz=640,
+        imgsz=320,
         conf_threshold=0.25,
         iou_threshold=0.45,
         max_detections=100,
