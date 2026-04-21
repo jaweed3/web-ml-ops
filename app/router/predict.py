@@ -1,6 +1,7 @@
-from fastapi import APIRouter, File, HTTPException, Request, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 
 from app.constant import ALLOWED_CONTENT_TYPES, MAX_FILE_SIZE_BYTES
+from app.dependencies import check_content_length, require_api_key
 from app.pipeline.prediction_pipeline import PredictionPipeline
 from app.schema.predict import PredictResponse
 from core.logger import get_logger
@@ -20,9 +21,11 @@ def _get_pipeline(request: Request) -> PredictionPipeline:
     "/predict",
     response_model=PredictResponse,
     responses={
+        401: {"description": "Missing or invalid API key"},
         422: {"description": "Invalid image — wrong MIME type, corrupt bytes, or file too large"},
         503: {"description": "Model not ready yet"},
     },
+    dependencies=[Depends(require_api_key), Depends(check_content_length)],
 )
 async def predict(request: Request, file: UploadFile = File(...)) -> PredictResponse:
     """
@@ -37,16 +40,17 @@ async def predict(request: Request, file: UploadFile = File(...)) -> PredictResp
             detail=f"Unsupported file type '{file.content_type}'. Use jpg, png, or webp.",
         )
 
+    # Read only after MIME check passes — avoids buffering rejected files
     image_bytes = await file.read()
+
+    if len(image_bytes) == 0:
+        raise HTTPException(status_code=422, detail="Uploaded file is empty.")
 
     if len(image_bytes) > MAX_FILE_SIZE_BYTES:
         raise HTTPException(
             status_code=422,
             detail=f"File too large ({len(image_bytes) // 1024} KB). Max 10 MB.",
         )
-
-    if len(image_bytes) == 0:
-        raise HTTPException(status_code=422, detail="Uploaded file is empty.")
 
     pipeline = _get_pipeline(request)
 
