@@ -52,12 +52,14 @@ if __name__ == "__main__":
     parser.add_argument("--stage", default="None", choices=["Staging", "None", "Production"])
     args = parser.parse_args()
 
-    init_mlflow(experiment_name="rescuevision-yolov8n")
     report = load_benchmark()
 
     if not metric_gate(report):
         log.error("metric_gate_failed_aborting_registration")
         raise SystemExit(1)
+
+    # Open MLflow run only after gate passes — avoids orphaned runs on failure
+    init_mlflow(experiment_name="rescuevision-yolov8n")
 
     git_hash = get_git_hash()
     tags = {"git_commit": git_hash, "pipeline": "rescuevision-mlops", "stage": args.stage}
