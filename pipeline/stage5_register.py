@@ -1,13 +1,14 @@
+import argparse
 import json
 import subprocess
 from pathlib import Path
 
 from core.logger import get_logger
-from core.mlflow_client import register_model
+from core.mlflow_client import init_mlflow, register_model
 
 log = get_logger("stage5_register")
 DEGRADATION_THRESHOLD = 0.97
-
+parser = argparse.ArgumentParser()
 
 def load_benchmark() -> dict:
     return json.loads(Path("artifacts/benchmark_report.json").read_text())
@@ -25,13 +26,13 @@ def metric_gate(report: dict) -> bool:
     ratio = int8_map / fp32_map if fp32_map > 0 else 1.0
     passed = ratio >= DEGRADATION_THRESHOLD
     log.info(
-        "metric_gate",
-        fp32_mAP50=fp32_map,
-        int8_mAP50=int8_map,
-        ratio=round(ratio, 4),
-        threshold=DEGRADATION_THRESHOLD,
-        passed=passed,
-    )
+        "metric_gate", extra={
+        "fp32_mAP50":fp32_map,
+        "int8_mAP50":int8_map,
+        "ratio":round(ratio, 4),
+        "threshold":DEGRADATION_THRESHOLD,
+        "passed":passed,
+    })
     return passed
 
 
@@ -45,6 +46,10 @@ def get_git_hash() -> str:
 
 
 if __name__ == "__main__":
+    parser.add_argument("--staging", default="None", choices=["Staging", "None", "Production"])
+    args = parser.parse_args()
+
+    init_mlflow(experiment_name="rescuevision-yolov8n")
     report = load_benchmark()
 
     if not metric_gate(report):
@@ -52,7 +57,7 @@ if __name__ == "__main__":
         raise SystemExit(1)
 
     git_hash = get_git_hash()
-    tags = {"git_commit": git_hash, "pipeline": "rescuevision-mlops"}
+    tags = {"git_commit": git_hash, "pipeline": "rescuevision-mlops", "stage": args.stage}
 
     artifacts = [
         ("artifacts/model.onnx", "rescuevision-onnx-fp32"),
@@ -61,4 +66,9 @@ if __name__ == "__main__":
     ]
     for path, name in artifacts:
         register_model(path, name, tags)
-        log.info("model_registered", name=name, path=path, git_hash=git_hash)
+        log.info("model_registered", extra={
+            "name":name,
+            "path":path,
+            "git_hash":git_hash,
+            "stage": args.stage
+        })

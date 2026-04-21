@@ -1,8 +1,10 @@
 import os
+from pathlib import Path
 
 import dagshub
 import mlflow
 from dotenv import load_dotenv
+from mlflow.tracking import MlflowClient
 
 load_dotenv()
 
@@ -32,7 +34,17 @@ def log_artifact(path: str) -> None:
 
 
 def register_model(artifact_path: str, name: str, tags: dict) -> None:
+    artifact_name = Path(artifact_path).name
     mlflow.log_artifact(artifact_path)
     run_id = mlflow.active_run().info.run_id
-    model_uri = f"runs:/{run_id}/{artifact_path}"
-    mlflow.register_model(model_uri=model_uri, name=name, tags=tags)
+
+    client = MlflowClient()
+    run = client.get_run(run_id)
+    source = f"{run.info.artifact_uri}/{artifact_name}"
+
+    try:
+        client.create_registered_model(name, tags=tags)
+    except mlflow.exceptions.MlflowException:
+        pass  # model already exists
+
+    client.create_model_version(name=name, source=source, run_id=run_id, tags=tags)

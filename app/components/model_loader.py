@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-
+import onnxruntime as ort
 import mlflow
 
 from app.entity.config_entity import CacheConfig, DagsHubConfig, ModelRegistryConfig
@@ -62,7 +62,7 @@ class ModelLoader:
 
     # ── public ────────────────────────────────────────────────────────────────
 
-    def load(self) -> tuple[Path, str]:
+    def load(self) -> tuple[Path, str, int]:
         """
         Returns
         -------
@@ -83,5 +83,11 @@ class ModelLoader:
         )
 
         onnx_path = self._find_onnx(local_path)
-        log.info("artifact_cached", path=str(onnx_path), version=version)
-        return onnx_path, version
+        sess = ort.InferenceSession(str(onnx_path), providers=["CPUExecutionProvider"])
+        imgsz = sess.get_inputs()[0].shape[2]
+        log.info("artifact_cached", extra={
+            "path":str(onnx_path), 
+            "version":version
+            "imgsz": imgsz
+        })
+        return onnx_path, version, imgsz
