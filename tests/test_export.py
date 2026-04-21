@@ -16,8 +16,8 @@ ARTIFACTS = {
 }
 
 # Expected YOLOv8n output shape for 640x640 input
-EXPECTED_OUTPUT_SHAPE = (1, 5, 8400)
-DUMMY_INPUT = np.zeros((1, 3, 640, 640), dtype=np.float32)
+EXPECTED_OUTPUT_SHAPE = (1, 5, 2100)
+DUMMY_INPUT = np.zeros((1, 3, 320, 320), dtype=np.float32)
 
 # ── Existence ─────────────────────────────────────────────────────────────────
 

@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-CHECKPOINT = Path("runs/train/weights/best.pt")
+CHECKPOINT = Path("runs/detect/runs/train/weights/best.pt")
 
 # ── Checkpoint ────────────────────────────────────────────────────────────────
 

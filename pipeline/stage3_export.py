@@ -6,6 +6,8 @@ from ultralytics import YOLO
 
 from core.config import load_config
 from core.logger import get_logger
+from core.mlflow_client import init_mlflow
+from core.mlflow_client import log_artifact as mlflow_log
 
 log = get_logger("stage3_export")
 ARTIFACTS_DIR = Path("artifacts")
@@ -56,7 +58,7 @@ def export_tflite_int8(checkpoint: str, imgsz: int) -> Path | None:
 
     model = YOLO(checkpoint)
     try:
-        model.export(format="tflite", imgsz=imgsz, int8=True)
+        model.export(format="tflite", imgsz=imgsz, int8=True, data=cfg.data.yaml)
     except AssertionError:
         pass
 
@@ -82,8 +84,12 @@ def export_tflite_int8(checkpoint: str, imgsz: int) -> Path | None:
 
 
 if __name__ == "__main__":
+    init_mlflow(experiment_name="rescuevision-yolov8n")
     cfg = load_config()
     checkpoint = "runs/detect/runs/train/weights/best.pt"
     fp32 = export_onnx_fp32(checkpoint, cfg.train.imgsz)
     export_onnx_int8(fp32)
     export_tflite_int8(checkpoint, cfg.train.imgsz)
+    mlflow_log("artifacts/model.onnx")
+    mlflow_log("artifacts/model_int8.onnx")
+    mlflow_log("artifacts/model_int8.tflite")
