@@ -61,32 +61,48 @@ class ModelLoader:
             raise RuntimeError(f"No .onnx file found in downloaded artifact directory: {local_dir}")
         return candidates[0]
 
+    def _find_cached_onnx(self) -> Path:
+        """Return the most recently modified .onnx in the cache dir, or raise."""
+        candidates = list(self._cache.model_dir.glob("**/*.onnx"))
+        if not candidates:
+            raise RuntimeError(
+                "MLflow registry unreachable and no cached model found in "
+                f"{self._cache.model_dir} — cannot start server"
+            )
+        best = max(candidates, key=lambda p: p.stat().st_mtime)
+        log.warning("using_cached_model", extra={"path": str(best)})
+        return best
+
     # ── public ────────────────────────────────────────────────────────────────
 
     def load(self) -> tuple[Path, str, int]:
         """
+        Download model from MLflow registry, falling back to the local cache
+        if the registry is unreachable. Raises RuntimeError only when both
+        registry and cache are unavailable.
+
         Returns
         -------
-        (model_path, version) : tuple[Path, str]
-            Local path to the .onnx file and the resolved version string.
+        (onnx_path, version, imgsz) : tuple[Path, str, int]
         """
         self._init_tracking()
         ensure_dir(self._cache.model_dir)
 
         name = self._model.name
-        version = self._resolve_version(name, self._model.version)
+        try:
+            version = self._resolve_version(name, self._model.version)
+            log.info("downloading_artifact", extra={"name": name, "version": version})
+            local_path = mlflow.artifacts.download_artifacts(
+                artifact_uri=f"models:/{name}/{version}",
+                dst_path=str(self._cache.model_dir),
+            )
+            onnx_path = self._find_onnx(local_path)
+        except Exception as exc:
+            log.warning("registry_unreachable_falling_back_to_cache", extra={"error": str(exc)})
+            onnx_path = self._find_cached_onnx()
+            version = "cached"
 
-        log.info("downloading_artifact", extra={"name": name, "version": version})
-        model_uri = f"models:/{name}/{version}"
-        local_path = mlflow.artifacts.download_artifacts(
-            artifact_uri=model_uri,
-            dst_path=str(self._cache.model_dir),
-        )
-
-        onnx_path = self._find_onnx(local_path)
         sess = ort.InferenceSession(str(onnx_path), providers=["CPUExecutionProvider"])
         imgsz = sess.get_inputs()[0].shape[2]
-        log.info(
-            "artifact_cached", extra={"path": str(onnx_path), "version": version, "imgsz": imgsz}
-        )
+        log.info("model_ready", extra={"path": str(onnx_path), "version": version, "imgsz": imgsz})
         return onnx_path, version, imgsz
