@@ -19,7 +19,7 @@ class DetectionPostprocessor:
     """
     Converts raw YOLOv8 ONNX output into structured detection dicts.
 
-    YOLOv8 output shape: ``[1, 5, 8400]``
+    YOLOv8 output shape: ``[1, 5, 2100]``
     where the 5 channels are ``[cx, cy, w, h, confidence]`` (normalized 0-1).
 
     Steps:
