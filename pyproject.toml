@@ -118,12 +118,18 @@ filterwarnings = [
 # ── Coverage ──────────────────────────────────────────────────────────────────
 [tool.coverage.run]
 source = ["pipeline", "core", "app"]
-omit = ["*/__pycache__/*", "*/research/*", ".venv/*"]
+omit = [
+    "*/__pycache__/*",
+    "*/research/*",
+    ".venv/*",
+    "app/utils/dummy_dataset.py",
+    "app/utils/dummy_yaml.py",
+]
 
 [tool.coverage.report]
 show_missing = true
 skip_covered = false
-fail_under = 60
+fail_under = 70
 
 [tool.setuptools.packages.find]
 include = ["app*", "core*", "pipeline*"]
