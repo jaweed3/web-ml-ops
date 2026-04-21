@@ -10,6 +10,7 @@ log = get_logger("stage5_register")
 DEGRADATION_THRESHOLD = 0.97
 parser = argparse.ArgumentParser()
 
+
 def load_benchmark() -> dict:
     return json.loads(Path("artifacts/benchmark_report.json").read_text())
 
@@ -26,13 +27,15 @@ def metric_gate(report: dict) -> bool:
     ratio = int8_map / fp32_map if fp32_map > 0 else 1.0
     passed = ratio >= DEGRADATION_THRESHOLD
     log.info(
-        "metric_gate", extra={
-        "fp32_mAP50":fp32_map,
-        "int8_mAP50":int8_map,
-        "ratio":round(ratio, 4),
-        "threshold":DEGRADATION_THRESHOLD,
-        "passed":passed,
-    })
+        "metric_gate",
+        extra={
+            "fp32_mAP50": fp32_map,
+            "int8_mAP50": int8_map,
+            "ratio": round(ratio, 4),
+            "threshold": DEGRADATION_THRESHOLD,
+            "passed": passed,
+        },
+    )
     return passed
 
 
@@ -66,9 +69,7 @@ if __name__ == "__main__":
     ]
     for path, name in artifacts:
         register_model(path, name, tags)
-        log.info("model_registered", extra={
-            "name":name,
-            "path":path,
-            "git_hash":git_hash,
-            "stage": args.stage
-        })
+        log.info(
+            "model_registered",
+            extra={"name": name, "path": path, "git_hash": git_hash, "stage": args.stage},
+        )
