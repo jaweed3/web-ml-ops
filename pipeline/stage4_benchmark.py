@@ -23,12 +23,8 @@ def _preprocess(img_path: str, imgsz: int) -> np.ndarray:
 
 
 def benchmark_onnx(
-        model_path: str,
-        val_images: list,
-        label: str,
-        imgsz: int,
-        data_yaml: str
-    ) -> dict:
+    model_path: str, val_images: list, label: str, imgsz: int, data_yaml: str
+) -> dict:
     # 1. Hitung Latensi
     sess = ort.InferenceSession(model_path)
     input_name = sess.get_inputs()[0].name
@@ -50,7 +46,7 @@ def benchmark_onnx(
         "mean_latency_ms": round(np.mean(latencies), 2),
         "p95_latency_ms": round(np.percentile(latencies, 95), 2),
         "model_size_mb": size_mb,
-        "mAP50": val_result.box.map50 # METRIK ASLI
+        "mAP50": val_result.box.map50,  # METRIK ASLI
     }
     log.info("benchmark_result", extra=result)
     return result
@@ -66,22 +62,14 @@ if __name__ == "__main__":
 
     results = [
         benchmark_onnx(
-            "artifacts/model.onnx",
-            val_images, "onnx_fp32",
-            cfg.train.imgsz,
-            cfg.data.yaml),
+            "artifacts/model.onnx", val_images, "onnx_fp32", cfg.train.imgsz, cfg.data.yaml
+        ),
         benchmark_onnx(
-            "artifacts/model_int8.onnx",
-            val_images,
-            "onnx_int8",
-            cfg.train.imgsz,
-            cfg.data.yaml),
+            "artifacts/model_int8.onnx", val_images, "onnx_int8", cfg.train.imgsz, cfg.data.yaml
+        ),
     ]
 
-    report = {
-        "n_samples": N_SAMPLES,
-        "results": results
-    }
+    report = {"n_samples": N_SAMPLES, "results": results}
     report_path = Path("artifacts/benchmark_report.json")
     report_path.write_text(json.dumps(report, indent=2))
     log.info("benchmark_report_saved", extra={"path": str(report_path)})
@@ -93,7 +81,7 @@ if __name__ == "__main__":
                 f"{prefix}_mean_latency_ms": r["mean_latency_ms"],
                 f"{prefix}_p95_latency_ms": r["p95_latency_ms"],
                 f"{prefix}_model_size_mb": r["model_size_mb"],
-                f"{prefix}_mAP50": r["mAP50"], # Log mAP yang asli!
+                f"{prefix}_mAP50": r["mAP50"],  # Log mAP yang asli!
             }
         )
     log_artifact(str(report_path))
