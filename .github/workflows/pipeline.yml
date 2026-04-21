@@ -144,35 +144,8 @@ jobs:
       - name: Install dependencies
         run: pip install mlflow dagshub
 
-      - name: Promote models Staging → Production
-        run: |
-          python - <<'EOF'
-          import os, mlflow
-
-          uri = f"https://dagshub.com/{os.environ['DAGSHUB_USERNAME']}/{os.environ['DAGSHUB_REPO']}.mlflow"
-          mlflow.set_tracking_uri(uri)
-          os.environ["MLFLOW_TRACKING_USERNAME"] = os.environ["DAGSHUB_USERNAME"]
-          os.environ["MLFLOW_TRACKING_PASSWORD"] = os.environ["DAGSHUB_TOKEN"]
-
-          client = mlflow.MlflowClient()
-          models = [
-              'rescuevision-onnx-fp32',
-              'rescuevision-onnx-int8',
-              'rescuevision-tflite-int8',
-          ]
-          for name_model in models:
-              versions = client.search_model_versions(
-                  f"name = '{name_model}' and tags.stage = 'Staging'"
-              )
-              if not versions:
-                  print(f"No Staging version for {name_model}, skipping")
-                  continue
-              v = versions[0].version
-              client.transition_model_version_stage(
-                  name_model, v, "Production", archive_existing_versions=True
-              )
-              print(f"Promoted {name_model} v{v} → Production")
-          EOF
+      - name: Promote models Staging → Production (with regression guard)
+        run: python -m pipeline.stage_promote
         env:
           DAGSHUB_USERNAME: ${{ secrets.DAGSHUB_USERNAME }}
           DAGSHUB_REPO: ${{ secrets.DAGSHUB_REPO }}
