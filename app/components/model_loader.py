@@ -41,7 +41,7 @@ class ModelLoader:
         mlflow.set_tracking_uri(uri)
         os.environ["MLFLOW_TRACKING_USERNAME"] = self._dagshub.username
         os.environ["MLFLOW_TRACKING_PASSWORD"] = self._dagshub.token
-        log.info("mlflow_tracking_configured", uri=uri)
+        log.info("mlflow_tracking_configured", extra=uri)
 
     def _resolve_version(self, name: str, requested: str) -> str:
         if requested != "latest":
@@ -51,7 +51,10 @@ class ModelLoader:
         if not versions:
             raise RuntimeError(f"No registered versions found for model: {name}")
         resolved = versions[0].version
-        log.info("resolved_latest_version", name=name, version=resolved)
+        log.info("resolved_latest_version", extra={ 
+            "name":name, 
+            "version":resolved
+        })
         return resolved
 
     def _find_onnx(self, local_dir: str) -> Path:
@@ -75,7 +78,10 @@ class ModelLoader:
         name = self._model.name
         version = self._resolve_version(name, self._model.version)
 
-        log.info("downloading_artifact", name=name, version=version)
+        log.info("downloading_artifact", extra={ 
+            "name":name, 
+            "version":version
+        })
         model_uri = f"models:/{name}/{version}"
         local_path = mlflow.artifacts.download_artifacts(
             artifact_uri=model_uri,
@@ -87,7 +93,7 @@ class ModelLoader:
         imgsz = sess.get_inputs()[0].shape[2]
         log.info("artifact_cached", extra={
             "path":str(onnx_path), 
-            "version":version
-            "imgsz": imgsz
+            "version":version, 
+            "imgsz":imgsz
         })
         return onnx_path, version, imgsz
