@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
+from fastapi.concurrency import run_in_threadpool
 
 from app.constant import ALLOWED_CONTENT_TYPES, MAX_FILE_SIZE_BYTES
 from app.dependencies import check_content_length, require_api_key
@@ -55,7 +56,7 @@ async def predict(request: Request, file: UploadFile = File(...)) -> PredictResp
     pipeline = _get_pipeline(request)
 
     try:
-        result = pipeline.run(image_bytes)
+        result = await run_in_threadpool(pipeline.run, image_bytes)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except RuntimeError as exc:

@@ -1,4 +1,3 @@
-import threading
 import time
 from pathlib import Path
 
@@ -31,7 +30,6 @@ class ONNXRunner:
     def __init__(self, model_path: Path, version: str, n_threads: int = ORT_INTRA_THREADS) -> None:
         self.version = version
         self.loaded_at: float | None = None
-        self._lock = threading.Lock()
 
         log.info("session_init", path=str(model_path), version=version)
 
@@ -72,8 +70,8 @@ class ONNXRunner:
         request_id = new_request_id()
         t0 = time.perf_counter()
 
-        with self._lock:
-            outputs = self._session.run(None, {self._input_name: blob})
+        # ORT InferenceSession.run() is thread-safe — concurrent requests are fine
+        outputs = self._session.run(None, {self._input_name: blob})
 
         latency = elapsed_ms(t0)
         log.info("inference_complete", request_id=request_id, latency_ms=latency)
