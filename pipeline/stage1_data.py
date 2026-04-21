@@ -8,7 +8,7 @@ from PIL import Image
 
 from app.utils.dummy_dataset import generate_dummy_data
 from app.utils.dummy_yaml import generate_dummy_yaml
-from core.config import load_config
+from core.config import is_debug_mode, load_config
 from core.logger import get_logger
 
 log = get_logger("stage1_data")
@@ -91,9 +91,8 @@ def validate_dataset(data_dir: str = "data/") -> dict:
 
 def run_stage():
     cfg = load_config()
-    is_debug = os.getenv("DEBUG_MODE", "false").lower() == "true"
 
-    if is_debug:
+    if is_debug_mode():
         log.info("debug mode active ", extra={"action": "generating dummy dataset"})
         generate_dummy_data(data_dir=cfg.data.dir)
         generate_dummy_yaml(output_dir=cfg.data.dir)
@@ -129,5 +128,5 @@ def subset_dataset(data_dir: str, max_samples: int) -> None:
 if __name__ == "__main__":
     run_stage()
 
-    if os.getenv("DEBUG_MODE", "false").lower() == "true":
+    if is_debug_mode():
         log.info("DEBUG_MODE_DETECTED")

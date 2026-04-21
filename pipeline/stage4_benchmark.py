@@ -25,7 +25,7 @@ def _preprocess(img_path: str, imgsz: int) -> np.ndarray:
 def benchmark_onnx(
     model_path: str, val_images: list, label: str, imgsz: int, data_yaml: str
 ) -> dict:
-    # 1. Hitung Latensi
+    # 1. Measure latency over N_SAMPLES warm-up-free runs
     sess = ort.InferenceSession(model_path)
     input_name = sess.get_inputs()[0].name
     latencies = []
@@ -35,18 +35,18 @@ def benchmark_onnx(
         sess.run(None, {input_name: blob})
         latencies.append((time.perf_counter() - t0) * 1000)
 
-    # 2. Hitung mAP Asli menggunakan YOLO backend
+    # 2. Compute real mAP50 via the YOLO validation backend
     log.info(f"evaluating_mAP_for_{label}")
     model = YOLO(model_path, task="detect")
     val_result = model.val(data=data_yaml, imgsz=imgsz, split="val", verbose=False)
 
-    size_mb = round(Path(model_path).stat().st_size / 1e6, 2)
+    size_mb = round(Path(model_path).stat().st_size / 1_000_000, 2)
     result = {
         "format": label,
         "mean_latency_ms": round(np.mean(latencies), 2),
         "p95_latency_ms": round(np.percentile(latencies, 95), 2),
         "model_size_mb": size_mb,
-        "mAP50": val_result.box.map50,  # METRIK ASLI
+        "mAP50": val_result.box.map50,
     }
     log.info("benchmark_result", extra=result)
     return result
@@ -81,7 +81,7 @@ if __name__ == "__main__":
                 f"{prefix}_mean_latency_ms": r["mean_latency_ms"],
                 f"{prefix}_p95_latency_ms": r["p95_latency_ms"],
                 f"{prefix}_model_size_mb": r["model_size_mb"],
-                f"{prefix}_mAP50": r["mAP50"],  # Log mAP yang asli!
+                f"{prefix}_mAP50": r["mAP50"],
             }
         )
     log_artifact(str(report_path))

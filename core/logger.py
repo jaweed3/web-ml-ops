@@ -54,26 +54,32 @@ class StructuredLogger(logging.Logger):
         record = self.makeRecord(self.name, level, "", 0, msg, (), None)
         self.handle(record)
 
+    def _extract_fields(self, kwargs: dict) -> dict:
+        # Accept both log.info("e", extra={"k": v}) and log.info("e", k=v)
+        if "extra" in kwargs:
+            return kwargs.pop("extra")
+        return dict(kwargs)
+
     def info(self, msg, *args, **kwargs):
-        extra = kwargs.pop("extra", {})
+        extra = self._extract_fields(kwargs)
         if args:
             msg = msg % args
         self._log_structured(logging.INFO, msg, **extra)
 
     def warning(self, msg, *args, **kwargs):
-        extra = kwargs.pop("extra", {})
+        extra = self._extract_fields(kwargs)
         if args:
             msg = msg % args
         self._log_structured(logging.WARNING, msg, **extra)
 
     def error(self, msg, *args, **kwargs):
-        extra = kwargs.pop("extra", {})
+        extra = self._extract_fields(kwargs)
         if args:
             msg = msg % args
         self._log_structured(logging.ERROR, msg, **extra)
 
 
-_USE_JSON = os.getenv("LOG_FORMAT", "").lower == "json"
+_USE_JSON = os.getenv("LOG_FORMAT", "").lower() == "json"
 
 
 class JSONFormatter(logging.Formatter):

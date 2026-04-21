@@ -12,7 +12,7 @@ dataset (DVC)
   → Prometheus + Grafana
 ```
 
-> **Testing status:** Stage 3 (export & quantization) is verified. Stages 1, 2, 4, 5 and the serving layer are implemented but not yet end-to-end tested.
+> **Testing status:** All stages verified end-to-end via `make debug`. Unit tests cover the serving layer (74% coverage, enforced), metric gate logic, export shapes, and benchmark SLOs.
 
 ---
 
@@ -24,6 +24,8 @@ dataset (DVC)
 | `artifacts/model_int8.onnx` | ONNX INT8 | Edge CPU |
 | `artifacts/model_int8.tflite` | TFLite INT8 | Raspberry Pi / mobile |
 | `artifacts/benchmark_report.json` | JSON | CI gate + MLflow |
+| `artifacts/training_metrics.json` | JSON | mAP50 for metric gate |
+| `artifacts/dataset_hash.txt` | text | Dataset lineage tag |
 
 ---
 
@@ -68,8 +70,11 @@ uv run python -m pipeline.stage3_export
 # Stage 4 — benchmark
 uv run python -m pipeline.stage4_benchmark
 
-# Stage 5 — register to MLflow
-uv run python -m pipeline.stage5_register
+# Stage 5 — register to MLflow (Staging)
+uv run python -m pipeline.stage5_register --stage Staging
+
+# Promote Staging → Production (with mAP50 regression guard)
+uv run python -m pipeline.stage_promote
 
 # Debug mode — runs stages 1-3 with dummy data, no GPU required
 make debug
@@ -110,10 +115,12 @@ rescuevision-mlops/
 ├── configs/           # train_config.yaml, serve_config.yaml
 ├── monitoring/        # Prometheus scrape config + Grafana provisioning
 ├── tests/
-│   ├── serve/         # API + component unit tests
+│   ├── serve/             # API + component unit tests (mocked, 74% coverage)
+│   ├── test_metric_gate.py  # Pure logic tests for metric gate
 │   ├── test_data.py
 │   ├── test_export.py
-│   └── test_benchmark.py
+│   ├── test_benchmark.py
+│   └── test_register.py   # MLflow registry smoke tests (needs DAGSHUB_* env)
 ├── research/          # Jupyter notebooks
 ├── scripts/           # smoke_test.sh
 ├── docs/              # All documentation

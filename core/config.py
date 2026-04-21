@@ -38,11 +38,15 @@ class Config(BaseModel):
     debug: DebugConfig
 
 
+def is_debug_mode() -> bool:
+    return os.getenv("DEBUG_MODE", "false").lower() == "true"
+
+
 def load_config(path: str = "configs/train_config.yaml") -> Config:
     raw = yaml.safe_load(Path(path).read_text())
     cfg = Config(**raw)
 
-    if os.getenv("DEBUG_MODE", "false").lower() == "true":
+    if is_debug_mode():
         cfg.train.epochs = cfg.debug.epochs
         cfg.train.imgsz = cfg.debug.imgsz
         cfg.train.batch = cfg.debug.batch

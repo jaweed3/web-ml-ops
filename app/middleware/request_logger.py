@@ -1,10 +1,10 @@
 import time
-import uuid
 
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 
 from app.components.metrics import REQUEST_COUNT, REQUEST_DURATION
+from app.utils.common import new_request_id
 from core.logger import get_logger
 
 log = get_logger("middleware.request")
@@ -25,7 +25,7 @@ class RequestLoggerMiddleware(BaseHTTPMiddleware):
     """
 
     async def dispatch(self, request: Request, call_next):
-        request_id = uuid.uuid4().hex[:8]
+        request_id = new_request_id()
         t0 = time.perf_counter()
         path = request.url.path
 
