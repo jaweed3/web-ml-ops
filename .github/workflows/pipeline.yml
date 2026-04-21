@@ -156,18 +156,22 @@ jobs:
 
           client = mlflow.MlflowClient()
           models = [
-              "rescuevision-onnx-fp32",
-              "rescuevision-onnx-int8",
-              "rescuevision-tflite-int8",
+              'rescuevision-onnx-fp32',
+              'rescuevision-onnx-int8',
+              'rescuevision-tflite-int8',
           ]
-          for name in models:
-              versions = client.search_model_versions(name, stages=["Staging"])
+          for name_model in models:
+              versions = client.search_model_versions(
+                  f"name = '{name_model}' and tags.stage = 'Staging'"
+              )
               if not versions:
-                  print(f"No Staging version for {name}, skipping")
+                  print(f"No Staging version for {name_model}, skipping")
                   continue
               v = versions[0].version
-              client.transition_model_version_stage(name, v, "Production", archive_existing_versions=True)
-              print(f"Promoted {name} v{v} → Production")
+              client.transition_model_version_stage(
+                  name_model, v, "Production", archive_existing_versions=True
+              )
+              print(f"Promoted {name_model} v{v} → Production")
           EOF
         env:
           DAGSHUB_USERNAME: ${{ secrets.DAGSHUB_USERNAME }}
