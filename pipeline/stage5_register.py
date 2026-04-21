@@ -15,6 +15,14 @@ def load_benchmark() -> dict:
     return json.loads(Path("artifacts/benchmark_report.json").read_text())
 
 
+def load_dataset_hash() -> str:
+    p = Path("artifacts/dataset_hash.txt")
+    if not p.exists():
+        log.warning("dataset_hash_missing", extra={"path": str(p)})
+        return "unknown"
+    return p.read_text().strip()
+
+
 def metric_gate(report: dict) -> bool:
     results = {r["format"]: r for r in report["results"]}
     fp32_map = results.get("onnx_fp32", {}).get("mAP50", None)
@@ -62,7 +70,13 @@ if __name__ == "__main__":
     init_mlflow(experiment_name="rescuevision-yolov8n")
 
     git_hash = get_git_hash()
-    tags = {"git_commit": git_hash, "pipeline": "rescuevision-mlops", "stage": args.stage}
+    dataset_hash = load_dataset_hash()
+    tags = {
+        "git_commit": git_hash,
+        "dataset_hash": dataset_hash,
+        "pipeline": "rescuevision-mlops",
+        "stage": args.stage,
+    }
 
     artifacts = [
         ("artifacts/model.onnx", "rescuevision-onnx-fp32"),
