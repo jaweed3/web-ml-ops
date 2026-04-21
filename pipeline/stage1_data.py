@@ -1,3 +1,4 @@
+import hashlib
 import os
 import random
 import subprocess
@@ -11,6 +12,27 @@ from core.config import load_config
 from core.logger import get_logger
 
 log = get_logger("stage1_data")
+
+
+def compute_dataset_hash(data_dir: str) -> str:
+    """
+    Stable MD5 over all label files (sorted by path).
+    Labels are small text files — cheap to hash, fully reproducible.
+    """
+    h = hashlib.md5()
+    label_files = sorted(Path(data_dir).glob("labels/**/*.txt"))
+    for lbl in label_files:
+        h.update(lbl.read_bytes())
+    return h.hexdigest()
+
+
+def write_dataset_hash(data_dir: str) -> str:
+    digest = compute_dataset_hash(data_dir)
+    out = Path("artifacts/dataset_hash.txt")
+    out.parent.mkdir(exist_ok=True)
+    out.write_text(digest)
+    log.info("dataset_hash_written", extra={"hash": digest, "path": str(out)})
+    return digest
 
 
 def pull_dataset() -> None:
@@ -79,6 +101,8 @@ def run_stage():
     else:
         pull_dataset()
         validate_dataset(data_dir=cfg.data.dir)
+
+    write_dataset_hash(cfg.data.dir)
 
 
 def subset_dataset(data_dir: str, max_samples: int) -> None:
