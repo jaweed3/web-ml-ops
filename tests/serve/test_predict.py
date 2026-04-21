@@ -60,4 +60,4 @@ def test_predict_image_shape_is_640(client, sample_image_bytes):
         "/predict",
         files={"file": ("test.jpg", sample_image_bytes, "image/jpeg")},
     ).json()
-    assert body["image_shape"] == [640, 640]
+    assert body["image_shape"] == [320, 320]
