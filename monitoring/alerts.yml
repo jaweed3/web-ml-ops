@@ -1,0 +1,83 @@
+groups:
+  - name: rescuevision.slo
+    interval: 30s
+    rules:
+
+      # ── Latency ─────────────────────────────────────────────────────────────
+
+      - alert: InferenceLatencyP95High
+        expr: >
+          histogram_quantile(0.95,
+            rate(rescuevision_inference_latency_seconds_bucket[5m])
+          ) * 1000 > 150
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "p95 inference latency above SLO"
+          description: >
+            p95 inference latency is {{ $value | printf "%.0f" }}ms
+            (SLO: 150ms). Sustained for 2m.
+
+      - alert: RequestLatencyP95High
+        expr: >
+          histogram_quantile(0.95,
+            rate(rescuevision_request_duration_seconds_bucket[5m])
+          ) * 1000 > 500
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "p95 end-to-end request latency above 500ms"
+          description: >
+            p95 request latency is {{ $value | printf "%.0f" }}ms. Sustained for 2m.
+
+      # ── Error rate ───────────────────────────────────────────────────────────
+
+      - alert: HighErrorRate
+        expr: >
+          rate(rescuevision_requests_total{status_code=~"5.."}[5m])
+          /
+          rate(rescuevision_requests_total[5m]) > 0.05
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Error rate above 5%"
+          description: >
+            {{ $value | humanizePercentage }} of requests are returning 5xx.
+
+      # ── Traffic ──────────────────────────────────────────────────────────────
+
+      - alert: NoIncomingTraffic
+        expr: rate(rescuevision_requests_total[5m]) == 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "No traffic for 5 minutes"
+          description: "Server is receiving zero requests — may indicate upstream issue."
+
+      # ── Model drift proxy ────────────────────────────────────────────────────
+
+      - alert: DetectionRateDrop
+        expr: >
+          (
+            avg_over_time(rescuevision_detections_per_request_sum[1h])
+            /
+            avg_over_time(rescuevision_detections_per_request_count[1h])
+          )
+          <
+          0.3 * (
+            avg_over_time(rescuevision_detections_per_request_sum[24h] offset 1d)
+            /
+            avg_over_time(rescuevision_detections_per_request_count[24h] offset 1d)
+          )
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Average detections per request dropped >70% vs yesterday"
+          description: >
+            Current avg detections/req: {{ $value | printf "%.2f" }}.
+            Possible model drift or upstream image quality change.
