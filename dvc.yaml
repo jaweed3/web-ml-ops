@@ -5,6 +5,7 @@ stages:
       - pipeline/stage1_data.py
     outs:
       - data/coco_person
+      - artifacts/dataset_hash.txt
 
   train:
     cmd: python pipeline/stage2_train.py
@@ -18,13 +19,14 @@ stages:
         - train.imgsz
         - train.batch
     outs:
-      - runs/train/weights/best.pt
+      - runs/detect/runs/train/weights/best.pt
+      - artifacts/training_metrics.json
 
   export:
     cmd: python pipeline/stage3_export.py
     deps:
       - pipeline/stage3_export.py
-      - runs/train/weights/best.pt
+      - runs/detect/runs/train/weights/best.pt
     outs:
       - artifacts/model.onnx
       - artifacts/model_int8.onnx
@@ -45,3 +47,4 @@ stages:
     deps:
       - pipeline/stage5_register.py
       - artifacts/benchmark_report.json
+      - artifacts/dataset_hash.txt
