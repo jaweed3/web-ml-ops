@@ -35,7 +35,7 @@ async def lifespan(app: FastAPI):
             conf_threshold=inf_cfg.conf_threshold,
             iou_threshold=inf_cfg.iou_threshold,
             max_detections=inf_cfg.max_detections,
-            n_threads=inf_cfg.n_threads
+            n_threads=inf_cfg.n_threads,
         )
         init_runner(model_path, version, n_threads=inf_cfg.n_threads)
     except Exception as exc:
