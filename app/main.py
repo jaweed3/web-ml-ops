@@ -43,7 +43,7 @@ async def lifespan(app: FastAPI):
         raise
 
     # Stash shared state for routers
-    app.state.pipeline = PredictionPipeline(inf_cfg)
+    app.state.pipeline = PredictionPipeline(int_cfg)
     app.state.model_name = model_cfg.name
     app.state.model_format = model_cfg.format
 
