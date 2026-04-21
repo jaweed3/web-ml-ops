@@ -4,7 +4,6 @@ Unit tests for metric_gate() in pipeline/stage5_register.py.
 No MLflow, no filesystem — pure logic tests.
 """
 
-
 from pipeline.stage5_register import DEGRADATION_THRESHOLD, metric_gate
 
 
