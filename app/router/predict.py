@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from fastapi.concurrency import run_in_threadpool
 
 from app.constant import ALLOWED_CONTENT_TYPES, MAX_FILE_SIZE_BYTES
-from app.dependencies import check_content_length, require_api_key
+from app.dependencies import check_content_length, limiter, require_api_key
 from app.pipeline.prediction_pipeline import PredictionPipeline
 from app.schema.predict import PredictResponse
 from core.logger import get_logger
@@ -24,10 +24,12 @@ def _get_pipeline(request: Request) -> PredictionPipeline:
     responses={
         401: {"description": "Missing or invalid API key"},
         422: {"description": "Invalid image — wrong MIME type, corrupt bytes, or file too large"},
+        429: {"description": "Rate limit exceeded — max 10 requests per minute per IP"},
         503: {"description": "Model not ready yet"},
     },
     dependencies=[Depends(require_api_key), Depends(check_content_length)],
 )
+@limiter.limit("10/minute")
 async def predict(request: Request, file: UploadFile = File(...)) -> PredictResponse:
     """
     Run victim-detection inference on an uploaded image.
