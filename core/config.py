@@ -8,6 +8,8 @@ from pydantic import BaseModel
 class DataConfig(BaseModel):
     dir: str
     yaml: str
+    subset_dir: str = "data/coco_person_subset"
+    subset_yaml: str = "data/coco_person_subset/dataset.yaml"
 
 
 class ModelConfig(BaseModel):
@@ -40,6 +42,10 @@ class Config(BaseModel):
 
 def is_debug_mode() -> bool:
     return os.getenv("DEBUG_MODE", "false").lower() == "true"
+
+
+def is_subset_mode() -> bool:
+    return os.getenv("USE_SUBSET", "false").lower() == "true"
 
 
 def load_config(path: str = "configs/train_config.yaml") -> Config:
