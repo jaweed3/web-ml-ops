@@ -2,6 +2,7 @@ from typing import Any
 
 from app.components.metrics import record_inference
 from app.components.postprocessor import DetectionPostprocessor
+from app.components.prediction_logger import log_prediction
 from app.components.preprocessor import ImagePreprocessor
 from app.components.runner import get_runner
 from app.entity.config_entity import InferenceConfig
@@ -68,6 +69,14 @@ class PredictionPipeline:
 
         # Record Prometheus metrics
         record_inference(latency_ms, len(detections))
+
+        # Persist prediction record for offline evaluation and feedback loop
+        log_prediction(
+            request_id=req_id,
+            model_version=runner.version,
+            n_detections=len(detections),
+            inference_time_ms=latency_ms,
+        )
 
         log.info(
             "prediction_complete",
