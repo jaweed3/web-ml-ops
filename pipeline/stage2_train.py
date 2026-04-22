@@ -1,6 +1,6 @@
 import time
 
-from core.config import load_config
+from core.config import is_subset_mode, load_config
 from core.logger import get_logger
 from core.mlflow_client import init_mlflow, log_artifact, log_metrics, log_params
 
@@ -36,8 +36,9 @@ def train(cfg) -> str:
     model = YOLO(cfg.model.name)
     t0 = time.time()
 
+    data_yaml = cfg.data.subset_yaml if is_subset_mode() else cfg.data.yaml
     results = model.train(
-        data=cfg.data.yaml,
+        data=data_yaml,
         epochs=cfg.train.epochs,
         imgsz=cfg.train.imgsz,
         batch=cfg.train.batch,
