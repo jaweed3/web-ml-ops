@@ -69,6 +69,13 @@ logs:
 smoke:
 	bash scripts/smoke_test.sh
 
+load-test: ## Run Locust load test (requires: make run in another terminal)
+	uv run locust -f scripts/locustfile.py \
+		--host http://localhost:8080 \
+		--users 50 --spawn-rate 5 \
+		--run-time 60s --headless \
+		--only-summary
+
 # ── Tests ─────────────────────────────────────────────────────────────────────
 test-pipeline:
 	uv run pytest tests/ -v --ignore=tests/serve --cov=pipeline --cov=core --cov-report=term-missing
