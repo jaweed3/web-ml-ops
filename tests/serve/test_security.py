@@ -1,5 +1,5 @@
 """
-Security layer tests — API key auth and Content-Length guard.
+Security layer tests — API key auth, Content-Length guard, and rate limiting.
 
 These tests run against the same mocked client fixture from conftest.py
 (no real model, no DagsHub). Auth is toggled by patching the module-level
@@ -8,7 +8,6 @@ _API_KEY constant in app.dependencies.
 
 import pytest
 from unittest.mock import patch
-
 
 # ── API key auth ──────────────────────────────────────────────────────────────
 
@@ -71,3 +70,30 @@ def test_predict_passes_when_content_length_within_limit(client, sample_image_by
         headers={"Content-Length": str(len(sample_image_bytes))},
     )
     assert r.status_code == 200
+
+
+# ── Rate limiting ─────────────────────────────────────────────────────────────
+
+
+def test_predict_429_when_rate_limit_exceeded(client, sample_image_bytes):
+    """11th request from same IP within one minute must return 429."""
+    from app.dependencies import limiter
+
+    # Start from a clean counter so this test doesn't depend on run order.
+    limiter._storage.reset()
+
+    def _post():
+        return client.post(
+            "/predict",
+            files={"file": ("test.jpg", sample_image_bytes, "image/jpeg")},
+        )
+
+    for _ in range(10):
+        r = _post()
+        assert r.status_code == 200, f"Unexpected failure before limit: {r.status_code}"
+
+    over_limit = _post()
+    assert over_limit.status_code == 429
+
+    # Restore clean state for tests that run after this one
+    limiter._storage.reset()
