@@ -1,0 +1,6 @@
+outs:
+- md5: e2b8336ecd46ef353accb66aa9390bbb.dir
+  size: 85931410
+  nfiles: 761
+  hash: md5
+  path: coco_person_subset
