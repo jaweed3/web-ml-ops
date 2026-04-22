@@ -1,6 +1,8 @@
 data:
   dir: data/coco_person
   yaml: data/coco_person/dataset.yaml
+  subset_dir: data/coco_person_subset
+  subset_yaml: data/coco_person_subset/dataset.yaml
 
 model:
   name: yolov8n.pt
