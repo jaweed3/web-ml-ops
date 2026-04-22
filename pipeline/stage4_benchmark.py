@@ -41,12 +41,20 @@ def benchmark_onnx(
     val_result = model.val(data=data_yaml, imgsz=imgsz, split="val", verbose=False)
 
     size_mb = round(Path(model_path).stat().st_size / 1_000_000, 2)
+
+    # Per-class AP50 — list of {class_id: int, ap50: float}
+    per_class = []
+    if hasattr(val_result.box, "ap_class_index") and val_result.box.ap_class_index is not None:
+        for cls_idx, ap50_val in zip(val_result.box.ap_class_index, val_result.box.ap50):
+            per_class.append({"class_id": int(cls_idx), "ap50": round(float(ap50_val), 4)})
+
     result = {
         "format": label,
         "mean_latency_ms": round(np.mean(latencies), 2),
         "p95_latency_ms": round(np.percentile(latencies, 95), 2),
         "model_size_mb": size_mb,
         "mAP50": val_result.box.map50,
+        "per_class_ap50": per_class,
     }
     log.info("benchmark_result", extra=result)
     return result
