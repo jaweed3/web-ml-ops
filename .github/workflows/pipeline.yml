@@ -142,7 +142,7 @@ jobs:
           cache: pip
 
       - name: Install dependencies
-        run: pip install mlflow dagshub
+        run: pip install mlflow dagshub httpx
 
       - name: Promote models Staging → Production (with regression guard)
         run: python -m pipeline.stage_promote
@@ -150,3 +150,5 @@ jobs:
           DAGSHUB_USERNAME: ${{ secrets.DAGSHUB_USERNAME }}
           DAGSHUB_REPO: ${{ secrets.DAGSHUB_REPO }}
           DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
