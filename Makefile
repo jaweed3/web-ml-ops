@@ -31,6 +31,20 @@ debug:
 debug-train:
 	DEBUG_MODE=true uv run python -m pipeline.stage2_train
 
+# ── Subset mode (Mac Mini / low-resource training) ────────────────────────────
+subset: ## Run full pipeline with subset dataset (USE_SUBSET=true)
+	USE_SUBSET=true uv run python -m pipeline.stage1_data
+	USE_SUBSET=true uv run python -m pipeline.stage2_train
+	USE_SUBSET=true uv run python -m pipeline.stage3_export
+	USE_SUBSET=true uv run python -m pipeline.stage4_benchmark
+	USE_SUBSET=true uv run python -m pipeline.stage5_register
+
+subset-train: ## Train only with subset dataset
+	USE_SUBSET=true uv run python -m pipeline.stage2_train
+
+create-subset: ## Create subset on PC Lab (run dvc push after this)
+	uv run python scripts/create_subset.py --n_train 300 --n_val 80
+
 .data_ready: pipeline/stage1_data.py
 	DEBUG_MODE=$(DEBUG) uv run python -m pipeline.stage1_data
 	@touch .data_ready
