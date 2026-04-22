@@ -1,9 +1,15 @@
 import os
 
-from fastapi import Header, HTTPException
+from fastapi import Header, HTTPException, Request
 from fastapi.security import APIKeyHeader
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 from app.constant import MAX_FILE_SIZE_BYTES
+
+# ── Rate limiter ──────────────────────────────────────────────────────────────
+
+limiter = Limiter(key_func=get_remote_address)
 
 _API_KEY_HEADER = APIKeyHeader(name="X-API-Key", auto_error=False)
 
@@ -44,7 +50,8 @@ def check_content_length(content_length: str | None = Header(default=None)) -> N
         except ValueError:
             return  # malformed header — let router handle it
         if size > MAX_FILE_SIZE_BYTES:
+            detail_message = "File too large ({size // 1024} KB). Max {MAX_FILE_SIZE_BYTES // 1_048_576} MB."
             raise HTTPException(
                 status_code=422,
-                detail=f"File too large ({size // 1024} KB). Max {MAX_FILE_SIZE_BYTES // 1_048_576} MB.",
+                detail=detail_message,
             )
