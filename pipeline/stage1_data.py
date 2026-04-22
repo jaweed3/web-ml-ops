@@ -7,7 +7,7 @@ from PIL import Image
 
 from app.utils.dummy_dataset import generate_dummy_data
 from app.utils.dummy_yaml import generate_dummy_yaml
-from core.config import is_debug_mode, load_config
+from core.config import is_debug_mode, is_subset_mode, load_config
 from core.logger import get_logger
 
 log = get_logger("stage1_data")
@@ -34,13 +34,16 @@ def write_dataset_hash(data_dir: str) -> str:
     return digest
 
 
-def pull_dataset() -> None:
-    log.info("pulling_dataset", extra={"source": "dagshub_dvc_remote"})
-    result = subprocess.run(["dvc", "pull"], capture_output=True, text=True)
+def pull_dataset(subset: bool = False) -> None:
+    target = "train_data_subset.dvc" if subset else None
+    cmd = ["dvc", "pull"] + ([target] if target else [])
+    mode = "subset" if subset else "full"
+    log.info("pulling_dataset", extra={"source": "dagshub_dvc_remote", "mode": mode})
+    result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:
         log.error("dvc_pull_failed", extra={"stderr": result.stderr})
         raise RuntimeError(f"DVC pull failed:\n{result.stderr}")
-    log.info("pull_complete")
+    log.info("pull_complete", extra={"mode": mode})
 
 
 def _validate_label_file(lbl_path: Path) -> None:
@@ -125,17 +128,21 @@ def validate_dataset(data_dir: str = "data/") -> dict:
 
 def run_stage():
     cfg = load_config()
+    subset = is_subset_mode()
+    data_dir = cfg.data.subset_dir if subset else cfg.data.dir
+
+    log.info("stage1_start", extra={"mode": "subset" if subset else "full", "data_dir": data_dir})
 
     if is_debug_mode():
-        log.info("debug mode active ", extra={"action": "generating dummy dataset"})
-        generate_dummy_data(data_dir=cfg.data.dir)
-        generate_dummy_yaml(output_dir=cfg.data.dir)
-        validate_dataset(data_dir=cfg.data.dir)
+        log.info("debug mode active", extra={"action": "generating dummy dataset"})
+        generate_dummy_data(data_dir=data_dir)
+        generate_dummy_yaml(output_dir=data_dir)
+        validate_dataset(data_dir=data_dir)
     else:
-        pull_dataset()
-        validate_dataset(data_dir=cfg.data.dir)
+        pull_dataset(subset=subset)
+        validate_dataset(data_dir=data_dir)
 
-    write_dataset_hash(cfg.data.dir)
+    write_dataset_hash(data_dir)
 
 
 def subset_dataset(data_dir: str, max_samples: int) -> None:
