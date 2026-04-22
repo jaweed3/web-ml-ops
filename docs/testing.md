@@ -10,10 +10,14 @@ Panduan testing dari awal sampai akhir — unit test, pipeline test, API test, s
 Level 1 — Unit tests (no external deps)
   tests/serve/test_preprocessor.py
   tests/serve/test_postprocessor.py
+  tests/serve/test_prediction_logger.py
+  tests/test_label_validation.py
+  tests/test_metric_gate.py
 
 Level 2 — API tests (mocked runner, no model needed)
   tests/serve/test_health.py
   tests/serve/test_predict.py
+  tests/serve/test_security.py        ← auth, rate limit, content-length
 
 Level 3 — Pipeline tests (requires dataset + artifacts)
   tests/test_data.py
@@ -22,6 +26,9 @@ Level 3 — Pipeline tests (requires dataset + artifacts)
 
 Level 4 — Smoke test (requires running server)
   scripts/smoke_test.sh
+
+Level 5 — Load test (requires running server)
+  scripts/locustfile.py
 ```
 
 ---
@@ -146,17 +153,87 @@ pytest tests/serve/test_predict.py -v
 
 ---
 
+### Security — auth, rate limit, content-length
+
+```bash
+pytest tests/serve/test_security.py -v
+```
+
+**Yang di-test:**
+
+| Test | Skenario | Expected |
+|------|----------|----------|
+| `test_predict_passes_when_api_key_disabled` | `API_KEY` env tidak di-set | 200 |
+| `test_predict_401_when_api_key_required_and_missing` | `API_KEY` di-set, header tidak ada | 401 |
+| `test_predict_401_when_api_key_wrong` | Key salah | 401 |
+| `test_predict_200_when_api_key_correct` | Key benar | 200 |
+| `test_predict_422_when_content_length_exceeds_limit` | `Content-Length: 11MB` | 422 |
+| `test_predict_passes_when_content_length_within_limit` | `Content-Length` valid | 200 |
+| `test_predict_429_when_rate_limit_exceeded` | 11 request dalam 1 menit | 429 pada request ke-11 |
+
+---
+
+### Prediction logger
+
+```bash
+pytest tests/serve/test_prediction_logger.py -v
+```
+
+**Yang di-test:**
+- File `predictions.jsonl` ter-create setelah inference pertama
+- Setiap inference menghasilkan satu baris JSON baru
+- Record punya field: `ts`, `request_id`, `model_version`, `n_detections`, `inference_time_ms`
+- Timestamp dalam format UTC ISO 8601
+- Multiple records ter-append dengan benar (tidak overwrite)
+- Error I/O (misal path read-only) tidak crash server — silently ignored
+
+---
+
+### Label schema validation
+
+```bash
+pytest tests/test_label_validation.py -v
+```
+
+**Yang di-test:**
+
+| Test | Input | Expected |
+|------|-------|----------|
+| Valid single annotation | `0 0.5 0.5 0.2 0.3` | Pass |
+| Valid multiple annotations | 2 baris valid | Pass |
+| Empty file | kosong | Pass (background image) |
+| Boundary values | `0 0.0 0.0 1.0 1.0` | Pass |
+| Wrong field count | 4 field | `ValueError: expected 5 fields` |
+| Non-numeric value | `0 abc 0.5 0.2 0.3` | `ValueError: non-numeric` |
+| Negative class_id | `-1 0.5 ...` | `ValueError: class_id must be ≥ 0` |
+| Coord above 1 | `0 1.1 ...` | `ValueError: out of range` |
+| Coord below 0 | `0 -0.1 ...` | `ValueError: out of range` |
+| Invalid second line | baris pertama ok, kedua tidak | `ValueError` pada baris ke-2 |
+
+---
+
+### Metric gate
+
+```bash
+pytest tests/test_metric_gate.py -v
+```
+
+11 test pure logic — tidak butuh MLflow, tidak butuh file apapun.
+
+---
+
 ### Run semua serve tests sekaligus
 
 ```bash
 make test-serve
 # atau
-pytest tests/serve/ -v --cov=app --cov-report=term-missing
+pytest tests/serve/ tests/test_metric_gate.py tests/test_label_validation.py -v \
+  --cov=app --cov-report=term-missing
 ```
 
 **Expected summary:**
 ```
-=================== 25 passed in X.XXs ===================
+=================== 64 passed in X.XXs ===================
 ```
 
 ---
@@ -285,7 +362,7 @@ pytest tests/ --ignore=tests/serve -v
 
 ---
 
-## Level 4 — Smoke test
+## Level 4 — Smoke test + manual checks
 
 End-to-end test terhadap server yang beneran running. Menggunakan `curl`.
 
@@ -329,6 +406,125 @@ Results: 9 passed, 0 failed
 
 ---
 
+### Manual: Rate limiting
+
+Verifikasi 429 langsung via curl (butuh server running):
+
+```bash
+# Kirim 11 request cepat — request ke-11 harus 429
+for i in $(seq 1 11); do
+  STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+    -F "file=@test_data/sample.jpg;type=image/jpeg" \
+    http://localhost:8080/predict)
+  echo "Request $i: $STATUS"
+done
+```
+
+Expected output:
+```
+Request 1: 200
+...
+Request 10: 200
+Request 11: 429
+```
+
+---
+
+### Manual: Prediction logging
+
+Setelah beberapa request ke `/predict`, cek file log:
+
+```bash
+cat artifacts/predictions.jsonl
+```
+
+Expected (satu record per baris):
+```json
+{"ts": "2026-04-22T10:00:00.123456+00:00", "request_id": "a1b2c3d4", "model_version": "3", "n_detections": 2, "inference_time_ms": 9.4}
+{"ts": "2026-04-22T10:00:01.456789+00:00", "request_id": "b2c3d4e5", "model_version": "3", "n_detections": 0, "inference_time_ms": 8.1}
+```
+
+---
+
+### Manual: Model warm-up
+
+Cek log saat server start — harus ada `warmup_complete` sebelum `server_ready`:
+
+```bash
+make up && docker compose logs rescuevision-serve | grep -E "warmup|server_ready"
+```
+
+Expected:
+```
+INFO  warmup_complete  warmup_ms=12.3
+INFO  server_ready     version=3
+```
+
+---
+
+### Manual: Telegram notification
+
+Test kirim notifikasi manual:
+
+```bash
+export TELEGRAM_TOKEN="your_token"
+export TELEGRAM_CHAT_ID="8126957752"
+
+python - <<'EOF'
+from app.utils.telegram import notify
+notify("🧪 *Test notifikasi RescueVision*\nKalau pesan ini masuk, Telegram integration berjalan.")
+EOF
+```
+
+Cek HP — pesan harus muncul di bot chat dalam beberapa detik.
+
+---
+
+## Level 5 — Load test
+
+Butuh server running. Install locust jika belum:
+
+```bash
+uv add locust --group dev
+```
+
+### Run load test
+
+```bash
+# Server harus running dulu
+make run   # atau: make up
+
+# Jalankan load test (50 users, 60 detik)
+make load-test
+```
+
+Output contoh:
+```
+ Name            # reqs  # fails  Avg  Min  Max  Med   req/s failures/s
+ POST /predict   2841    0(0.00%) 47   12   198  42    47.4  0.0
+
+ Percentiles:
+ 50%   42ms
+ 75%   68ms
+ 95%   142ms   ← harus < 200ms
+ 99%   187ms
+
+ Total: 2841 requests, 0 failures
+```
+
+**Pass criteria:**
+- p95 latency < 200 ms
+- Error rate < 1%
+- Tidak ada 5xx (429 dihitung sebagai expected, bukan error)
+
+### Run dengan auth
+
+```bash
+API_KEY=your_key make load-test
+```
+
+---
+
 ## Jalankan semuanya sekaligus
 
 ```bash
@@ -338,11 +534,48 @@ make test-serve
 # Level 3 (butuh dataset + artifacts — jalankan dvc repro dulu)
 make test-pipeline
 
-# Semua (Level 1 + 2 + 3)
+# Semua unit + API tests
 make test
 
-# Level 4 (butuh server running)
+# Level 4 — smoke test (butuh server running)
 make up && sleep 30 && make smoke
+
+# Level 5 — load test (butuh server running)
+make load-test
+```
+
+### Urutan lengkap dari nol
+
+```bash
+# 1. Install deps
+make install-dev
+
+# 2. Unit + API tests (tidak butuh model)
+pytest tests/serve/ tests/test_metric_gate.py tests/test_label_validation.py -v
+
+# 3. Start server (Docker)
+make up
+sleep 30  # tunggu warm-up selesai
+
+# 4. Smoke test
+make smoke
+
+# 5. Telegram test
+python -c "from app.utils.telegram import notify; notify('✅ smoke test passed')"
+
+# 6. Rate limit manual check
+for i in $(seq 1 11); do
+  echo -n "req $i: "
+  curl -s -o /dev/null -w "%{http_code}\n" \
+    -F "file=@data/coco_person/images/val/$(ls data/coco_person/images/val | head -1);type=image/jpeg" \
+    http://localhost:8080/predict
+done
+
+# 7. Check prediction log
+cat artifacts/predictions.jsonl | python -m json.tool | head -20
+
+# 8. Load test
+make load-test
 ```
 
 ---
