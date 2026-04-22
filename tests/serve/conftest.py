@@ -6,6 +6,15 @@ import pytest
 from fastapi.testclient import TestClient
 
 
+@pytest.fixture(autouse=True)
+def reset_rate_limiter():
+    """Reset slowapi's in-memory counter before every test so tests are independent."""
+    from app.dependencies import limiter
+    limiter._storage.reset()
+    yield
+    limiter._storage.reset()
+
+
 def _make_jpeg(h: int = 480, w: int = 640) -> bytes:
     img = np.zeros((h, w, 3), dtype=np.uint8)
     _, buf = cv2.imencode(".jpg", img)
