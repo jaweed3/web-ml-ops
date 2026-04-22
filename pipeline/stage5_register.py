@@ -83,6 +83,17 @@ if __name__ == "__main__":
         ("artifacts/model_int8.onnx", "rescuevision-onnx-int8"),
         ("artifacts/model_int8.tflite", "rescuevision-tflite-int8"),
     ]
+    # Log per-class AP50 breakdown to MLflow tags for the INT8 model
+    int8_result = next((r for r in report["results"] if r["format"] == "onnx_int8"), None)
+    if int8_result:
+        per_class_tags = {}
+        for entry in int8_result.get("per_class_ap50", []):
+            key = f"class_{entry['class_id']}_ap50_int8"
+            per_class_tags[key] = str(round(entry["ap50"], 4))
+        if per_class_tags:
+            tags.update(per_class_tags)
+            log.info("per_class_ap50_logged", extra={"n_classes": len(per_class_tags)})
+
     for path, name in artifacts:
         register_model(path, name, tags)
         log.info(
