@@ -73,9 +73,7 @@ if __name__ == "__main__":
         raise RuntimeError("No validation images found — run Stage 1 first")
 
     results = [
-        benchmark_onnx(
-            "artifacts/model.onnx", val_images, "onnx_fp32", cfg.train.imgsz, data_yaml
-        ),
+        benchmark_onnx("artifacts/model.onnx", val_images, "onnx_fp32", cfg.train.imgsz, data_yaml),
         benchmark_onnx(
             "artifacts/model_int8.onnx", val_images, "onnx_int8", cfg.train.imgsz, data_yaml
         ),
