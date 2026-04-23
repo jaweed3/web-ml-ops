@@ -78,6 +78,7 @@ jobs:
     env:
       USE_SUBSET: "true"
       TRAIN_DEVICE: cpu
+      DEBUG_MODE: "true"
       DAGSHUB_USERNAME: ${{ secrets.DAGSHUB_USERNAME }}
       DAGSHUB_REPO: ${{ secrets.DAGSHUB_REPO }}
       DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
