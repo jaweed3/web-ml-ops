@@ -4,7 +4,7 @@ from pathlib import Path
 from onnxruntime.quantization import QuantType, quantize_dynamic
 from ultralytics import YOLO
 
-from core.config import load_config
+from core.config import is_subset_mode, load_config
 from core.logger import get_logger
 from core.mlflow_client import init_mlflow
 from core.mlflow_client import log_artifact as mlflow_log
@@ -58,7 +58,8 @@ def export_tflite_int8(checkpoint: str, imgsz: int) -> Path | None:
 
     model = YOLO(checkpoint)
     try:
-        model.export(format="tflite", imgsz=imgsz, int8=True, data=cfg.data.yaml)
+        data_yaml = cfg.data.subset_yaml if is_subset_mode() else cfg.data.yaml
+        model.export(format="tflite", imgsz=imgsz, int8=True, data=data_yaml)
     except AssertionError:
         pass
 

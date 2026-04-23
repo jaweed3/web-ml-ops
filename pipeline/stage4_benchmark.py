@@ -7,7 +7,7 @@ import numpy as np
 import onnxruntime as ort
 from ultralytics.models import YOLO
 
-from core.config import load_config
+from core.config import is_subset_mode, load_config
 from core.logger import get_logger
 from core.mlflow_client import init_mlflow, log_artifact, log_metrics
 
@@ -65,17 +65,19 @@ def benchmark_onnx(
 if __name__ == "__main__":
     init_mlflow(experiment_name="rescuevision-yolov8n")
     cfg = load_config()
-    val_images = sorted(Path("data/coco_person/images/val").glob("*.jpg"))
+    data_dir = cfg.data.subset_dir if is_subset_mode() else cfg.data.dir
+    data_yaml = cfg.data.subset_yaml if is_subset_mode() else cfg.data.yaml
+    val_images = sorted((Path(data_dir) / "images" / "val").glob("*.jpg"))
 
     if len(val_images) == 0:
         raise RuntimeError("No validation images found — run Stage 1 first")
 
     results = [
         benchmark_onnx(
-            "artifacts/model.onnx", val_images, "onnx_fp32", cfg.train.imgsz, cfg.data.yaml
+            "artifacts/model.onnx", val_images, "onnx_fp32", cfg.train.imgsz, data_yaml
         ),
         benchmark_onnx(
-            "artifacts/model_int8.onnx", val_images, "onnx_int8", cfg.train.imgsz, cfg.data.yaml
+            "artifacts/model_int8.onnx", val_images, "onnx_int8", cfg.train.imgsz, data_yaml
         ),
     ]
 
