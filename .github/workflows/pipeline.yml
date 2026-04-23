@@ -25,22 +25,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - uses: astral-sh/setup-uv@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-          cache: pip
+          enable-cache: true
 
       - name: Install quality tools
-        run: pip install ruff mypy pydantic fastapi
+        run: uv pip install --system ruff mypy pydantic fastapi
 
       - name: Ruff lint
-        run: ruff check .
+        run: uv run ruff check .
 
       - name: Ruff format check
-        run: ruff format --check .
+        run: uv run ruff format --check .
 
       - name: Mypy type check
-        run: mypy app/ core/ pipeline/ --ignore-missing-imports
+        run: uv run mypy app/ core/ pipeline/ --ignore-missing-imports
         continue-on-error: true   # warn only until strict typing is complete
 
 # ── Job 2: Test suite (all branches) ─────────────────────────────────────────
@@ -51,16 +51,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - uses: astral-sh/setup-uv@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-          cache: pip
+          enable-cache: true
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: uv sync
 
       - name: Run serve unit tests
-        run: pytest tests/serve/ tests/test_metric_gate.py -v --cov=app --cov-report=xml --cov-fail-under=70
+        run: uv run pytest tests/serve/ tests/test_metric_gate.py -v --cov=app --cov-report=xml --cov-fail-under=70
 
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
@@ -78,42 +78,42 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - uses: astral-sh/setup-uv@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-          cache: pip
+          enable-cache: true
 
       - name: Install base dependencies
-        run: pip install -r requirements.txt
+        run: uv sync
 
       - name: Install training dependencies (ultralytics + tensorflow)
-        run: pip install -r requirements-train.txt
+        run: uv pip install --system -r requirements-train.txt
 
       - name: Configure DVC remote credentials
         run: |
-          dvc remote modify storage --local access_key_id ${{ secrets.DAGSHUB_TOKEN }}
-          dvc remote modify storage --local secret_access_key ${{ secrets.DAGSHUB_TOKEN }}
+          uv run dvc remote modify storage --local access_key_id ${{ secrets.DAGSHUB_TOKEN }}
+          uv run dvc remote modify storage --local secret_access_key ${{ secrets.DAGSHUB_TOKEN }}
 
       - name: Pull dataset (DVC)
-        run: dvc pull --force
+        run: uv run dvc pull --force
         env:
           DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
 
       - name: Pre-pipeline data tests
-        run: pytest tests/test_data.py -v
+        run: uv run pytest tests/test_data.py -v
 
       - name: Run full pipeline (DVC repro)
-        run: dvc repro
+        run: uv run dvc repro
         env:
           DAGSHUB_USERNAME: ${{ secrets.DAGSHUB_USERNAME }}
           DAGSHUB_REPO: ${{ secrets.DAGSHUB_REPO }}
           DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
 
       - name: Post-pipeline artifact + benchmark tests
-        run: pytest tests/test_export.py tests/test_benchmark.py -v
+        run: uv run pytest tests/test_export.py tests/test_benchmark.py -v
 
       - name: Register models to Staging
-        run: python -m pipeline.stage5_register --stage Staging
+        run: uv run python -m pipeline.stage5_register --stage Staging
         env:
           DAGSHUB_USERNAME: ${{ secrets.DAGSHUB_USERNAME }}
           DAGSHUB_REPO: ${{ secrets.DAGSHUB_REPO }}
@@ -136,16 +136,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - uses: astral-sh/setup-uv@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-          cache: pip
+          enable-cache: true
 
       - name: Install dependencies
-        run: pip install mlflow dagshub httpx
+        run: uv pip install --system mlflow dagshub httpx
 
       - name: Promote models Staging → Production (with regression guard)
-        run: python -m pipeline.stage_promote
+        run: uv run python -m pipeline.stage_promote
         env:
           DAGSHUB_USERNAME: ${{ secrets.DAGSHUB_USERNAME }}
           DAGSHUB_REPO: ${{ secrets.DAGSHUB_REPO }}
