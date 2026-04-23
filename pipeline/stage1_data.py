@@ -42,7 +42,9 @@ def _init_dagshub() -> None:
         import dagshub
 
         token = os.getenv("DAGSHUB_TOKEN")
-        dagshub.init(repo_owner="jaweed3", repo_name="web-ml-ops", mlflow=False, token=token)
+        if token:
+            dagshub.auth.add_app_token(token)
+        dagshub.init(repo_owner="jaweed3", repo_name="web-ml-ops", mlflow=False)
         log.info("dagshub_init_complete")
     except Exception as e:
         log.warning("dagshub_init_skipped", extra={"reason": str(e)})

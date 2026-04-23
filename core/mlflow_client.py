@@ -17,7 +17,8 @@ def init_mlflow(experiment_name: str) -> None:
     if not username or not token or not repo:
         return
 
-    dagshub.init(repo_owner=username, repo_name=repo, mlflow=True, token=token)
+    dagshub.auth.add_app_token(token)
+    dagshub.init(repo_owner=username, repo_name=repo, mlflow=True)
     mlflow.set_experiment(experiment_name)
     mlflow.start_run()
 
