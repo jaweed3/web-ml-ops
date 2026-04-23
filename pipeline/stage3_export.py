@@ -86,9 +86,14 @@ def export_tflite_int8(checkpoint: str, imgsz: int) -> Path | None:
 if __name__ == "__main__":
     init_mlflow(experiment_name="rescuevision-yolov8n")
     cfg = load_config()
-    best = Path("runs/detect/runs/train/weights/best.pt")
-    last = Path("runs/detect/runs/train/weights/last.pt")
-    checkpoint = str(best if best.exists() else last)
+    checkpoint_file = Path("artifacts/checkpoint_path.txt")
+    if checkpoint_file.exists():
+        checkpoint = checkpoint_file.read_text().strip()
+    else:
+        # fallback for local runs
+        best = Path("runs/detect/runs/train/weights/best.pt")
+        last = Path("runs/detect/runs/train/weights/last.pt")
+        checkpoint = str(best if best.exists() else last)
     fp32 = export_onnx_fp32(checkpoint, cfg.train.imgsz)
     export_onnx_int8(fp32)
     export_tflite_int8(checkpoint, cfg.train.imgsz)

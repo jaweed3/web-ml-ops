@@ -1,5 +1,6 @@
 import os
 import time
+from pathlib import Path
 
 from core.config import is_subset_mode, load_config
 from core.logger import get_logger
@@ -47,7 +48,7 @@ def train(cfg) -> str:
         lr0=cfg.train.lr0,
         optimizer=cfg.train.optimizer,
         device=device,
-        project="runs",
+        project=str(Path.cwd() / "runs"),
         name="train",
         exist_ok=True,
     )
@@ -64,7 +65,15 @@ def train(cfg) -> str:
     log_metrics(metrics)
     log.info("training_complete", extra=metrics)
 
-    checkpoint_path = str(results.save_dir / "weights" / "best.pt")
+    weights_dir = results.save_dir / "weights"
+    best = weights_dir / "best.pt"
+    last = weights_dir / "last.pt"
+    checkpoint_path = str(best if best.exists() else last)
+
+    # Write path so downstream stages can find it without guessing
+    Path("artifacts").mkdir(exist_ok=True)
+    Path("artifacts/checkpoint_path.txt").write_text(checkpoint_path)
+
     log_artifact(checkpoint_path)
     log.info("checkpoint_logged", extra={"path": checkpoint_path})
 
