@@ -95,7 +95,7 @@ jobs:
           dvc remote modify storage --local secret_access_key ${{ secrets.DAGSHUB_TOKEN }}
 
       - name: Pull dataset (DVC)
-        run: dvc pull
+        run: dvc pull --force
         env:
           DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
 
