@@ -91,8 +91,8 @@ jobs:
 
       - name: Configure DVC remote credentials
         run: |
-          dvc remote modify origin --local access_key_id ${{ secrets.DAGSHUB_TOKEN }}
-          dvc remote modify origin --local secret_access_key ${{ secrets.DAGSHUB_TOKEN }}
+          dvc remote modify storage --local access_key_id ${{ secrets.DAGSHUB_TOKEN }}
+          dvc remote modify storage --local secret_access_key ${{ secrets.DAGSHUB_TOKEN }}
 
       - name: Pull dataset (DVC)
         run: dvc pull
