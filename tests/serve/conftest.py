@@ -10,6 +10,7 @@ from fastapi.testclient import TestClient
 def reset_rate_limiter():
     """Reset slowapi's in-memory counter before every test so tests are independent."""
     from app.dependencies import limiter
+
     limiter._storage.reset()
     yield
     limiter._storage.reset()

@@ -38,6 +38,7 @@ def _init_dagshub() -> None:
     """Configure DVC credentials via DagHub SDK (no manual token management)."""
     try:
         import dagshub
+
         dagshub.init(repo_owner="jaweed3", repo_name="web-ml-ops", mlflow=False)
         log.info("dagshub_init_complete")
     except Exception as e:
@@ -81,23 +82,17 @@ def _validate_label_file(lbl_path: Path) -> None:
             continue
         parts = line.split()
         if len(parts) != 5:
-            raise ValueError(
-                f"{lbl_path}:{lineno} — expected 5 fields, got {len(parts)}: {line!r}"
-            )
+            raise ValueError(f"{lbl_path}:{lineno} — expected 5 fields, got {len(parts)}: {line!r}")
         try:
             cls_id = int(parts[0])
             coords = [float(p) for p in parts[1:]]
-        except ValueError:
-            raise ValueError(
-                f"{lbl_path}:{lineno} — non-numeric value: {line!r}"
-            )
+        except ValueError as err:
+            raise ValueError(f"{lbl_path}:{lineno} — non-numeric value: {line!r}") from err
         if cls_id < 0:
             raise ValueError(f"{lbl_path}:{lineno} — class_id must be ≥ 0, got {cls_id}")
         for i, v in enumerate(coords):
             if not (0.0 <= v <= 1.0):
-                raise ValueError(
-                    f"{lbl_path}:{lineno} — coordinate[{i}] out of range [0,1]: {v}"
-                )
+                raise ValueError(f"{lbl_path}:{lineno} — coordinate[{i}] out of range [0,1]: {v}")
 
 
 def validate_dataset(data_dir: str = "data/") -> dict:

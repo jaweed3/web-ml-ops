@@ -13,7 +13,6 @@ Optional env vars:
 """
 
 import os
-from pathlib import Path
 
 import cv2
 import numpy as np
@@ -34,7 +33,7 @@ _API_KEY = os.environ.get("API_KEY", "")
 class PredictUser(HttpUser):
     """
     Simulates a drone operator uploading frames for victim detection.
-    Wait 100–500 ms between requests (realistic inter-frame cadence).
+    Wait 100-500 ms between requests (realistic inter-frame cadence).
     """
 
     wait_time = between(0.1, 0.5)

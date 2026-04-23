@@ -53,5 +53,5 @@ def log_prediction(
         with _lock:
             with log_path.open("a") as fh:
                 fh.write(json.dumps(record) + "\n")
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         log.error("prediction_log_write_failed", error=str(exc))

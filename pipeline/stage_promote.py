@@ -29,7 +29,7 @@ from core.logger import get_logger
 
 log = get_logger("stage_promote")
 
-REGRESSION_TOLERANCE = 0.01   # allow up to 1% mAP50 drop vs current production
+REGRESSION_TOLERANCE = 0.01  # allow up to 1% mAP50 drop vs current production
 MAP_METRIC_KEY = "mAP50"
 HEALTH_ERROR_THRESHOLD = 0.05  # rollback if error rate > 5%
 
@@ -168,7 +168,11 @@ def promote(client: MlflowClient, name: str) -> bool:
 
 
 def verify_and_rollback_if_needed(
-    client: MlflowClient, name: str, prev_prod_version: str | None, serving_url: str, verify_secs: int
+    client: MlflowClient,
+    name: str,
+    prev_prod_version: str | None,
+    serving_url: str,
+    verify_secs: int,
 ) -> bool:
     """
     Returns True if serving is healthy after promotion.
@@ -206,15 +210,28 @@ if __name__ == "__main__":
 
     if failed:
         log.error("some_promotions_failed", extra={"models": failed})
-        notify(f"❌ *Promotion failed*\nModels: `{', '.join(failed)}`\nCommit: `{os.environ.get('GITHUB_SHA', 'local')[:7]}`")
+        notify(
+            f"❌ *Promotion failed*\n"
+            f"Models: `{', '.join(failed)}`\n"
+            f"Commit: `{os.environ.get('GITHUB_SHA', 'local')[:7]}`"
+        )
         sys.exit(1)
 
     log.info("all_models_promoted_to_production")
-    notify(f"✅ *All models promoted to Production*\nCommit: `{os.environ.get('GITHUB_SHA', 'local')[:7]}`")
 
-    # Optional: verify serving health and rollback if unhealthy
+    commit = os.environ.get("GITHUB_SHA", "local")[:7]
+
+    notify(f"✅ *All models promoted to Production*\nCommit: `{commit}`")
+
+    # optional: verify serving health and rollback if unhealthy
     if serving_url:
-        log.info("starting_post_promotion_verification", extra={"url": serving_url, "secs": verify_secs})
+        log.info(
+            "starting_post_promotion_verification",
+            extra={
+                "url": serving_url,
+                "secs": verify_secs,
+            },
+        )
         rollback_failures = []
         for model_name in MODELS:
             ok = verify_and_rollback_if_needed(
@@ -225,7 +242,9 @@ if __name__ == "__main__":
 
         if rollback_failures:
             log.error("rollback_triggered_for_models", extra={"models": rollback_failures})
-            notify(f"🔴 *Auto-rollback triggered*\nHealth check failed after promotion.\nModels rolled back: `{', '.join(rollback_failures)}`")
+            models_str = ", ".join(rollback_failures)
+
+            notify(f"⚠️ *Serving check failed after promotion.*\nModels rolled back: `{models_str}`")
             sys.exit(1)
     else:
         log.info("serving_url_not_set_skipping_health_verification")

@@ -100,13 +100,16 @@ if __name__ == "__main__":
         print(f"[!] {dst} already exists. Delete it first if you want to recreate.")
         raise SystemExit(1)
 
-    log.info("creating_subset", extra={
-        "src": str(src),
-        "dst": str(dst),
-        "n_train": args.n_train,
-        "n_val": args.n_val,
-        "seed": args.seed,
-    })
+    log.info(
+        "creating_subset",
+        extra={
+            "src": str(src),
+            "dst": str(dst),
+            "n_train": args.n_train,
+            "n_val": args.n_val,
+            "seed": args.seed,
+        },
+    )
 
     n_train = copy_split(src, dst, "train", args.n_train, args.seed)
     n_val = copy_split(src, dst, "val", args.n_val, args.seed)

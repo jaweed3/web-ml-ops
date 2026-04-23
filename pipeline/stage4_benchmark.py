@@ -45,7 +45,9 @@ def benchmark_onnx(
     # Per-class AP50 — list of {class_id: int, ap50: float}
     per_class = []
     if hasattr(val_result.box, "ap_class_index") and val_result.box.ap_class_index is not None:
-        for cls_idx, ap50_val in zip(val_result.box.ap_class_index, val_result.box.ap50):
+        for cls_idx, ap50_val in zip(
+            val_result.box.ap_class_index, val_result.box.ap50, strict=True
+        ):
             per_class.append({"class_id": int(cls_idx), "ap50": round(float(ap50_val), 4)})
 
     result = {

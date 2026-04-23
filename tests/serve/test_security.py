@@ -6,7 +6,6 @@ These tests run against the same mocked client fixture from conftest.py
 _API_KEY constant in app.dependencies.
 """
 
-import pytest
 from unittest.mock import patch
 
 # ── API key auth ──────────────────────────────────────────────────────────────

@@ -1,6 +1,6 @@
 import os
 
-from fastapi import Header, HTTPException, Request
+from fastapi import Header, HTTPException
 from fastapi.security import APIKeyHeader
 from slowapi import Limiter
 from slowapi.util import get_remote_address
@@ -50,7 +50,9 @@ def check_content_length(content_length: str | None = Header(default=None)) -> N
         except ValueError:
             return  # malformed header — let router handle it
         if size > MAX_FILE_SIZE_BYTES:
-            detail_message = "File too large ({size // 1024} KB). Max {MAX_FILE_SIZE_BYTES // 1_048_576} MB."
+            detail_message = (
+                f"File too large ({size // 1024} KB). Max {MAX_FILE_SIZE_BYTES // 1_048_576} MB."
+            )
             raise HTTPException(
                 status_code=422,
                 detail=detail_message,
