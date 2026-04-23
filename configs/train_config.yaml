@@ -18,6 +18,7 @@ train:
   #   mps   → Mac Mini M4 (Apple Silicon)
   #   cpu   → fallback (slow, not recommended for full training)
   #   0     → first CUDA device (same as cuda)
+  # Override with env var: TRAIN_DEVICE=mps make subset
   device: cuda
 
 debug:

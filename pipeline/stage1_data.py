@@ -34,15 +34,38 @@ def write_dataset_hash(data_dir: str) -> str:
     return digest
 
 
+def _init_dagshub() -> None:
+    """Configure DVC credentials via DagHub SDK (no manual token management)."""
+    try:
+        import dagshub
+        dagshub.init(repo_owner="jaweed3", repo_name="web-ml-ops", mlflow=False)
+        log.info("dagshub_init_complete")
+    except Exception as e:
+        log.warning("dagshub_init_skipped", extra={"reason": str(e)})
+
+
+def _rewrite_subset_yaml(subset_dir: Path) -> None:
+    """Overwrite dataset.yaml with absolute paths for the current machine."""
+    yaml_path = subset_dir / "dataset.yaml"
+    abs_path = subset_dir.resolve()
+    yaml_path.write_text(
+        f"path: {abs_path}\ntrain: images/train\nval: images/val\n\nnc: 1\nnames:\n  0: person\n"
+    )
+    log.info("subset_yaml_rewritten", extra={"path": str(yaml_path)})
+
+
 def pull_dataset(subset: bool = False) -> None:
-    target = "train_data_subset.dvc" if subset else None
-    cmd = ["dvc", "pull"] + ([target] if target else [])
+    _init_dagshub()
+    target = "data/coco_person_subset.dvc" if subset else None
+    cmd = ["dvc", "pull"] + (["--force", target] if subset else [])
     mode = "subset" if subset else "full"
     log.info("pulling_dataset", extra={"source": "dagshub_dvc_remote", "mode": mode})
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:
         log.error("dvc_pull_failed", extra={"stderr": result.stderr})
         raise RuntimeError(f"DVC pull failed:\n{result.stderr}")
+    if subset:
+        _rewrite_subset_yaml(Path("data/coco_person_subset"))
     log.info("pull_complete", extra={"mode": mode})
 
 

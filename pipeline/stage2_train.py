@@ -1,3 +1,4 @@
+import os
 import time
 
 from core.config import is_subset_mode, load_config
@@ -37,6 +38,7 @@ def train(cfg) -> str:
     t0 = time.time()
 
     data_yaml = cfg.data.subset_yaml if is_subset_mode() else cfg.data.yaml
+    device = os.getenv("TRAIN_DEVICE", cfg.train.device)
     results = model.train(
         data=data_yaml,
         epochs=cfg.train.epochs,
@@ -44,7 +46,7 @@ def train(cfg) -> str:
         batch=cfg.train.batch,
         lr0=cfg.train.lr0,
         optimizer=cfg.train.optimizer,
-        device=cfg.train.device,
+        device=device,
         project="runs",
         name="train",
         exist_ok=True,
