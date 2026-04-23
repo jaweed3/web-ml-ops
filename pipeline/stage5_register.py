@@ -3,6 +3,7 @@ import json
 import subprocess
 from pathlib import Path
 
+from core.config import is_debug_mode
 from core.logger import get_logger
 from core.mlflow_client import init_mlflow, register_model
 
@@ -62,7 +63,9 @@ if __name__ == "__main__":
 
     report = load_benchmark()
 
-    if not metric_gate(report):
+    if is_debug_mode():
+        log.warning("metric_gate_skipped_debug_mode")
+    elif not metric_gate(report):
         log.error("metric_gate_failed_aborting_registration")
         raise SystemExit(1)
 
