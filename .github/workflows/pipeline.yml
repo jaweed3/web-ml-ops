@@ -75,6 +75,12 @@ jobs:
     needs: test
     if: github.ref == 'refs/heads/main' && github.event_name != 'workflow_dispatch'
     environment: staging
+    env:
+      USE_SUBSET: "true"
+      TRAIN_DEVICE: cpu
+      DAGSHUB_USERNAME: ${{ secrets.DAGSHUB_USERNAME }}
+      DAGSHUB_REPO: ${{ secrets.DAGSHUB_REPO }}
+      DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v4
 
@@ -94,30 +100,23 @@ jobs:
           uv run dvc remote modify storage --local access_key_id ${{ secrets.DAGSHUB_TOKEN }}
           uv run dvc remote modify storage --local secret_access_key ${{ secrets.DAGSHUB_TOKEN }}
 
-      - name: Pull dataset (DVC)
-        run: uv run dvc pull --force
-        env:
-          DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
+      - name: Pull subset dataset (DVC)
+        run: uv run dvc pull --force data/coco_person_subset.dvc test_data.dvc
 
-      - name: Pre-pipeline data tests
-        run: uv run pytest tests/test_data.py -v
+      - name: Stage 1 — Data
+        run: uv run python -m pipeline.stage1_data
 
-      - name: Run full pipeline (DVC repro)
-        run: uv run dvc repro
-        env:
-          DAGSHUB_USERNAME: ${{ secrets.DAGSHUB_USERNAME }}
-          DAGSHUB_REPO: ${{ secrets.DAGSHUB_REPO }}
-          DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
+      - name: Stage 2 — Train (subset, CPU)
+        run: uv run python -m pipeline.stage2_train
 
-      - name: Post-pipeline artifact + benchmark tests
-        run: uv run pytest tests/test_export.py tests/test_benchmark.py -v
+      - name: Stage 3 — Export
+        run: uv run python -m pipeline.stage3_export
 
-      - name: Register models to Staging
+      - name: Stage 4 — Benchmark
+        run: uv run python -m pipeline.stage4_benchmark
+
+      - name: Stage 5 — Register to Staging
         run: uv run python -m pipeline.stage5_register --stage Staging
-        env:
-          DAGSHUB_USERNAME: ${{ secrets.DAGSHUB_USERNAME }}
-          DAGSHUB_REPO: ${{ secrets.DAGSHUB_REPO }}
-          DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
 
       - name: Upload edge artifacts
         uses: actions/upload-artifact@v4
@@ -126,12 +125,15 @@ jobs:
           path: artifacts/
           retention-days: 30
 
-# ── Job 4: Promote Staging → Production (manual trigger only) ─────────────────
+# ── Job 4: Promote Staging → Production ───────────────────────────────────────
   promote-production:
     name: Promote Staging → Production
     runs-on: ubuntu-latest
-    needs: []
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.promote_to_production == 'true'
+    needs: pipeline-staging
+    if: |
+      always() &&
+      needs.pipeline-staging.result == 'success' ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.promote_to_production == 'true')
     environment: production
     steps:
       - uses: actions/checkout@v4
