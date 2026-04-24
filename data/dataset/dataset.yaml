@@ -1,7 +1,7 @@
-path: /absolute/path/to/your/root  # path absolut ke root yang ada train_data/ dan test_data/                            
-train: train_data/images/train                                                                                          
-val: train_data/images/val                                                                                              
+path: .  # path absolut ke root yang ada train_data/ dan test_data/                            
+train: train_data/images/train
+val: train_data/images/val
 test: test_data/images
-nc: 1                                                                                                                   
-names:                                                                                                                   
+nc: 1 
+names:
   - person

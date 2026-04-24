@@ -4,14 +4,16 @@ stages:
     deps:
       - pipeline/stage1_data.py
     outs:
-      - data/dataset
+      - train_data
+      - test_data
       - artifacts/dataset_hash.txt
 
   train:
     cmd: python pipeline/stage2_train.py
     deps:
       - pipeline/stage2_train.py
-      - data/dataset
+      - train_data
+      - test_data
       - configs/train_config.yaml
     params:
       - params.yaml:
@@ -38,7 +40,7 @@ stages:
       - pipeline/stage4_benchmark.py
       - artifacts/model.onnx
       - artifacts/model_int8.onnx
-      - data/dataset/train_data/images/val
+      - train_data/images/val
     outs:
       - artifacts/benchmark_report.json
 

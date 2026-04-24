@@ -3,7 +3,7 @@ from pathlib import Path
 
 from PIL import Image
 
-DATA_ROOT = Path("data/dataset")
+DATA_ROOT = Path(".")
 TRAIN_DIR = DATA_ROOT / "train_data"
 TEST_DIR = DATA_ROOT / "test_data"
 
