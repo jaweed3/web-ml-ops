@@ -64,10 +64,23 @@ def _rewrite_subset_yaml(subset_dir: Path) -> None:
     log.info("subset_yaml_rewritten", extra={"path": str(yaml_path)})
 
 
+def _dataset_exists(data_dir: str) -> bool:
+    """Return True if train_data and test_data directories are already populated."""
+    root = Path(data_dir)
+    required = [
+        root / "train_data" / "images" / "train",
+        root / "train_data" / "labels" / "train",
+    ]
+    return all(p.exists() and any(p.iterdir()) for p in required)
+
+
 def pull_dataset(subset: bool = False) -> None:
     _init_dagshub()
-    target = "data/coco_person_subset.dvc" if subset else None
-    cmd = ["dvc", "pull"] + (["--force", target] if subset else [])
+    if subset:
+        cmd = ["dvc", "pull", "--force", "data/coco_person_subset.dvc"]
+    else:
+        # Pull only the dataset dirs, not model artifacts
+        cmd = ["dvc", "pull", "train_data", "test_data"]
     mode = "subset" if subset else "full"
     log.info("pulling_dataset", extra={"source": "dagshub_dvc_remote", "mode": mode})
     result = subprocess.run(cmd, capture_output=True, text=True)
@@ -168,7 +181,10 @@ def run_stage():
         generate_dummy_yaml(output_dir=data_dir)
         validate_dataset(data_dir=data_dir)
     else:
-        pull_dataset(subset=subset)
+        if _dataset_exists(data_dir):
+            log.info("dataset_already_present_skipping_pull", extra={"data_dir": data_dir})
+        else:
+            pull_dataset(subset=subset)
         validate_dataset(data_dir=data_dir)
 
     write_dataset_hash(data_dir)
