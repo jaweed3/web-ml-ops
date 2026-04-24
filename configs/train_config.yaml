@@ -1,6 +1,8 @@
 data:
-  dir: data/coco_person
-  yaml: data/coco_person/dataset.yaml
+  # Root directory that contains train_data/ and test_data/ subdirectories.
+  # Override with DATA_ROOT env var or edit this path for your machine.
+  dir: data/dataset
+  yaml: data/dataset/dataset.yaml
   subset_dir: data/coco_person_subset
   subset_yaml: data/coco_person_subset/dataset.yaml
 

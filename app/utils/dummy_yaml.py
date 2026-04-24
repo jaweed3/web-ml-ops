@@ -4,11 +4,11 @@ import yaml
 
 
 def generate_dummy_yaml(output_dir: str) -> str:
-
     yaml_content = {
         "path": str(Path(output_dir).resolve()),
-        "train": "images/train",
-        "val": "images/val",
+        "train": "train_data/images/train",
+        "val": "train_data/images/val",
+        "test": "test_data/images",
         "nc": 1,
         "names": ["person"],
     }

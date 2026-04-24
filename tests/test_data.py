@@ -1,38 +1,56 @@
+import random
 from pathlib import Path
 
-DATA_DIR = Path("data/coco_person")
+from PIL import Image
+
+DATA_ROOT = Path("data/dataset")
+TRAIN_DIR = DATA_ROOT / "train_data"
+TEST_DIR = DATA_ROOT / "test_data"
 
 # ── Structure ─────────────────────────────────────────────────────────────────
 
 
 def test_required_dirs_exist():
-    for d in ["images/train", "images/val", "labels/train", "labels/val"]:
-        assert (DATA_DIR / d).exists(), f"Missing: {DATA_DIR / d}"
+    required = [
+        TRAIN_DIR / "images/train",
+        TRAIN_DIR / "images/val",
+        TRAIN_DIR / "labels/train",
+        TRAIN_DIR / "labels/val",
+        TEST_DIR / "images",
+        TEST_DIR / "labels",
+    ]
+    for d in required:
+        assert d.exists(), f"Missing: {d}"
 
 
 def test_train_set_not_empty():
-    imgs = list((DATA_DIR / "images/train").glob("*.jpg"))
+    imgs = list((TRAIN_DIR / "images/train").glob("*.jpg"))
     assert len(imgs) > 0, "No training images found — check DVC pull"
 
 
 def test_val_set_not_empty():
-    imgs = list((DATA_DIR / "images/val").glob("*.jpg"))
+    imgs = list((TRAIN_DIR / "images/val").glob("*.jpg"))
     assert len(imgs) > 0, "No validation images found — check DVC pull"
+
+
+def test_test_set_not_empty():
+    imgs = list((TEST_DIR / "images").glob("*.jpg"))
+    assert len(imgs) > 0, "No test images found — check DVC pull"
 
 
 # ── Image / label alignment ───────────────────────────────────────────────────
 
 
 def test_no_image_label_mismatch():
-    imgs = sorted((DATA_DIR / "images/train").glob("*.jpg"))
-    lbls = sorted((DATA_DIR / "labels/train").glob("*.txt"))
+    imgs = sorted((TRAIN_DIR / "images/train").glob("*.jpg"))
+    lbls = sorted((TRAIN_DIR / "labels/train").glob("*.txt"))
     assert len(imgs) == len(lbls), f"Mismatch: {len(imgs)} images vs {len(lbls)} labels"
 
 
 def test_every_image_has_label():
     """Each image stem must have a corresponding label file."""
-    img_stems = {p.stem for p in (DATA_DIR / "images/train").glob("*.jpg")}
-    lbl_stems = {p.stem for p in (DATA_DIR / "labels/train").glob("*.txt")}
+    img_stems = {p.stem for p in (TRAIN_DIR / "images/train").glob("*.jpg")}
+    lbl_stems = {p.stem for p in (TRAIN_DIR / "labels/train").glob("*.txt")}
     missing = img_stems - lbl_stems
     assert not missing, f"Images without labels: {sorted(missing)[:5]}"
 
@@ -46,7 +64,7 @@ def test_yolo_annotation_format_valid():
         <class_id> <cx> <cy> <w> <h>
     where all values are floats and cx/cy/w/h are in [0, 1].
     """
-    label_dir = DATA_DIR / "labels/train"
+    label_dir = TRAIN_DIR / "labels/train"
     errors = []
 
     for label_path in label_dir.glob("*.txt"):
@@ -68,8 +86,8 @@ def test_yolo_annotation_format_valid():
 
 
 def test_only_person_class_present():
-    """Dataset is coco_person — class id must always be 0."""
-    label_dir = DATA_DIR / "labels/train"
+    """Dataset should only contain class id 0 (person)."""
+    label_dir = TRAIN_DIR / "labels/train"
     non_zero = []
 
     for label_path in label_dir.glob("*.txt"):
@@ -86,11 +104,7 @@ def test_only_person_class_present():
 
 def test_sample_images_not_corrupt():
     """Spot-check up to 20 random training images for corruption via PIL."""
-    import random
-
-    from PIL import Image
-
-    imgs = list((DATA_DIR / "images/train").glob("*.jpg"))
+    imgs = list((TRAIN_DIR / "images/train").glob("*.jpg"))
     sample = random.sample(imgs, min(20, len(imgs)))
     corrupt = []
 

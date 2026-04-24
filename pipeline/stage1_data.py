@@ -19,7 +19,7 @@ def compute_dataset_hash(data_dir: str) -> str:
     Labels are small text files — cheap to hash, fully reproducible.
     """
     h = hashlib.md5()
-    label_files = sorted(Path(data_dir).glob("labels/**/*.txt"))
+    label_files = sorted(Path(data_dir).glob("train_data/labels/**/*.txt"))
     for lbl in label_files:
         h.update(lbl.read_bytes())
     return h.hexdigest()
@@ -55,7 +55,11 @@ def _rewrite_subset_yaml(subset_dir: Path) -> None:
     yaml_path = subset_dir / "dataset.yaml"
     abs_path = subset_dir.resolve()
     yaml_path.write_text(
-        f"path: {abs_path}\ntrain: images/train\nval: images/val\n\nnc: 1\nnames:\n  0: person\n"
+        f"path: {abs_path}\n"
+        f"train: train_data/images/train\n"
+        f"val: train_data/images/val\n"
+        f"test: test_data/images\n\n"
+        f"nc: 1\nnames:\n  0: person\n"
     )
     log.info("subset_yaml_rewritten", extra={"path": str(yaml_path)})
 
@@ -104,18 +108,20 @@ def validate_dataset(data_dir: str = "data/") -> dict:
     log.info("dataset_validation_started!")
     path = Path(data_dir)
     required_dirs = [
-        "images/train",
-        "images/val",
-        "labels/train",
-        "labels/val",
+        "train_data/images/train",
+        "train_data/images/val",
+        "train_data/labels/train",
+        "train_data/labels/val",
+        "test_data/images",
+        "test_data/labels",
     ]
     for d in required_dirs:
         if not (path / d).exists():
             raise FileNotFoundError(f"Missing required directory: {path / d}")
 
-    train_images = sorted((path / "images/train").glob("*.jpg"))
-    train_labels = sorted((path / "labels/train").glob("*.txt"))
-    val_images = sorted((path / "images/val").glob("*.jpg"))
+    train_images = sorted((path / "train_data/images/train").glob("*.jpg"))
+    train_labels = sorted((path / "train_data/labels/train").glob("*.txt"))
+    val_images = sorted((path / "train_data/images/val").glob("*.jpg"))
 
     if len(train_images) == 0:
         raise ValueError("No training images found — check DVC pull")

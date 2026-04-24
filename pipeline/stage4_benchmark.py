@@ -67,7 +67,7 @@ if __name__ == "__main__":
     cfg = load_config()
     data_dir = cfg.data.subset_dir if is_subset_mode() else cfg.data.dir
     data_yaml = cfg.data.subset_yaml if is_subset_mode() else cfg.data.yaml
-    val_images = sorted((Path(data_dir) / "images" / "val").glob("*.jpg"))
+    val_images = sorted((Path(data_dir) / "train_data" / "images" / "val").glob("*.jpg"))
 
     if len(val_images) == 0:
         raise RuntimeError("No validation images found — run Stage 1 first")
