@@ -2,10 +2,13 @@ SHELL := /bin/bash
 UV := $(shell command -v uv 2> /dev/null)
 DEBUG ?= false
 
-.PHONY: help install quality test quality pipeline-full clean serve docker-up docker-down
+.PHONY: help all debug debug-train subset subset-train create-subset pipeline-full promote \
+        install-dev install-train install-debug \
+        run build up down logs smoke load-test \
+        test test-pipeline test-serve quality clean
 
-help: ## Helper Message 
-	@grep -E '^[a-zA-Z_-]+:.*?## .**$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}' 
+help: ## Show this help message
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
 # ── Install ───────────────────────────────────────────────────────────────────
 install-dev:
@@ -19,7 +22,8 @@ install-debug:
 	uv sync --group dev --group debug
 
 # ── Phase 1: MLOps pipeline ───────────────────────────────────────────────────
-all: data train export benchmark register
+all: .data_ready .model_trained .model_exported .benchmark_passed ## Run full pipeline (incremental via sentinels)
+	DEBUG_MODE=$(DEBUG) uv run python -m pipeline.stage5_register
 
 debug:
 	DEBUG_MODE=true uv run python -m pipeline.stage1_data
@@ -61,8 +65,11 @@ create-subset: ## Create subset on PC Lab (run dvc push after this)
 	DEBUG_MODE=$(DEBUG) uv run python -m pipeline.stage4_benchmark
 	@touch .benchmark_passed
 
-pipeline-full: quality .model_exported # Executed from model_export phase
-	uv run python -m pipeline.stage5_register
+pipeline-full: quality .benchmark_passed ## Run quality check + full pipeline then register
+	DEBUG_MODE=$(DEBUG) uv run python -m pipeline.stage5_register
+
+promote: ## Promote Staging → Production with regression guard + auto-rollback
+	uv run python -m pipeline.stage_promote
 
 # ── Phase 2: Serving layer ────────────────────────────────────────────────────
 run:
@@ -108,7 +115,8 @@ quality:
 	uv run mypy app/ core/ pipeline/  --ignore-missing-imports
 
 # ── Cleanup ───────────────────────────────────────────────────────────────────
-clean:
+clean: ## Remove artifacts, caches, and pipeline sentinel files
 	rm -rf artifacts/ runs/ __pycache__
+	rm -f .data_ready .model_trained .model_exported .benchmark_passed
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 	find . -name "*.pyc" -delete 2>/dev/null || true
