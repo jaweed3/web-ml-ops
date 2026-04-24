@@ -3,7 +3,7 @@ UV := $(shell command -v uv 2> /dev/null)
 DEBUG ?= false
 
 .PHONY: help all debug debug-train subset subset-train create-subset pipeline-full promote \
-        install-dev install-train install-debug \
+        install-dev install-train install-train-cuda install-debug \
         run build up down logs smoke load-test \
         test test-pipeline test-serve quality clean
 
@@ -17,6 +17,10 @@ install-dev:
 
 install-train:
 	uv sync --all-groups
+
+install-train-cuda: ## Install train deps + replace torch with CUDA 12.8 build (RTX training machine)
+	uv sync --all-groups
+	uv pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128
 
 install-debug:
 	uv sync --group dev --group debug
