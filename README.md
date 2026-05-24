@@ -2,6 +2,16 @@
 
 End-to-end ML pipeline for SAR victim detection — from versioned dataset to edge-ready model artifacts and a production inference server.
 
+> **Testing status:** All stages verified end-to-end via `dvc repro` (debug mode) and `make debug`. Unit tests cover the serving layer (74% coverage, enforced), metric gate logic, export shapes, and benchmark SLOs.
+
+---
+
+## Pipeline
+
+### DVC Pipeline DAG
+
+![DVC Pipeline Graph](docs/dvc-pipeline-graph.png)
+
 ```
 dataset (DVC)
   → train YOLOv8n (MLflow)
@@ -12,46 +22,83 @@ dataset (DVC)
   → Prometheus + Grafana
 ```
 
-> **Testing status:** All stages verified end-to-end via `make debug`. Unit tests cover the serving layer (74% coverage, enforced), metric gate logic, export shapes, and benchmark SLOs.
+```mermaid
+flowchart TD
+  node1["benchmark"]
+  node2["data"]
+  node3["export"]
+  node4["register"]
+  node5["train"]
+  node1-->node4
+  node2-->node1
+  node2-->node4
+  node2-->node5
+  node3-->node1
+  node5-->node3
+  node6["data/coco_person_subset.dvc"]
+```
 
 ---
 
-## Artifacts produced
+### MLflow Tracking
 
-| File | Format | Target |
-|---|---|---|
-| `artifacts/model.onnx` | ONNX FP32 | Laptop / Raspberry Pi |
-| `artifacts/model_int8.onnx` | ONNX INT8 | Edge CPU |
-| `artifacts/model_int8.tflite` | TFLite INT8 | Raspberry Pi / mobile |
-| `artifacts/benchmark_report.json` | JSON | CI gate + MLflow |
-| `artifacts/training_metrics.json` | JSON | mAP50 for metric gate |
-| `artifacts/dataset_hash.txt` | text | Dataset lineage tag |
+![MLflow UI](docs/mlflow-ui.png)
+
+Training metrics (mAP50, precision, recall) and benchmark results (latency, model size) are logged per run.
+
+---
+
+### Monitoring Stack
+
+![Grafana Dashboard](docs/grafana-ui.png)
+
+![Prometheus UI](docs/prometheus-ui.png)
+
+Prometheus scrapes inference metrics from the FastAPI server; Grafana provides pre-configured dashboards.
 
 ---
 
 ## Quickstart
 
-Requires [uv](https://docs.astral.sh/uv/).
+Requires [uv](https://docs.astral.sh/uv/) and Python ≥ 3.10.
 
 ```bash
 git clone <your-repo-url>
 cd rescuevision-mlops
 
-# Install base deps (no torch, no ultralytics)
+# Install dependencies
 make install-dev
 
-# Create .env and fill in your DagsHub credentials
-cp .env .env.local   # or create .env from scratch — see docs/setup.md
+# Run the full ML pipeline via DVC (debug mode, no GPU required)
+DEBUG_MODE=true dvc repro
 
-# Run the full ML pipeline via DVC
-dvc repro
+# Or use the Makefile shortcut:
+make debug
 
 # Start the inference server + monitoring stack
 make up
 ```
 
-Server → http://localhost:8080/docs  
-Grafana → http://localhost:3000 (admin / rescuevision)
+**Debug mode** generates synthetic data, trains 1 epoch on CPU, and skips DVC remote pulls — works on any machine with no credentials.
+
+For the full pipeline with real data, set up DagsHub credentials (see [docs/setup.md](docs/setup.md)) and run:
+
+```bash
+dvc repro
+```
+
+> Docker is required for the serving + monitoring stack. On macOS, use [Colima](https://github.com/abiosoft/colima):
+> ```bash
+> brew install colima docker docker-compose
+> colima start
+> ```
+
+| Service | URL | Credentials |
+|---|---|---|
+| FastAPI Server | http://localhost:8080/docs | — |
+| MLflow UI | http://localhost:5000 | — |
+| Grafana | http://localhost:3000 | admin / rescuevision |
+| Prometheus | http://localhost:9090 | — |
 
 ---
 
