@@ -1,0 +1,115 @@
+schema: '2.0'
+stages:
+  data:
+    cmd: python pipeline/stage1_data.py
+    deps:
+    - path: pipeline/stage1_data.py
+      hash: md5
+      md5: d32a40f46c35cfe6103a8c1599a6f0e6
+      size: 7360
+    outs:
+    - path: artifacts/dataset_hash.txt
+      hash: md5
+      md5: 7e42bcdede197d4ad7967830c74b1b14
+      size: 32
+    - path: test_data
+      hash: md5
+      md5: 72396ae35b620b7fac9ee9f831b1d03f.dir
+      size: 2463314
+      nfiles: 20
+    - path: train_data
+      hash: md5
+      md5: 9215445d9249d69a9a7bcacc6754e376.dir
+      size: 4927427
+      nfiles: 40
+  train:
+    cmd: python pipeline/stage2_train.py
+    deps:
+    - path: configs/train_config.yaml
+      hash: md5
+      md5: 34848f4e2bdb2a0db908312a64264521
+      size: 773
+    - path: pipeline/stage2_train.py
+      hash: md5
+      md5: c7a912a549a3b8101370e527ca795491
+      size: 2446
+    - path: test_data
+      hash: md5
+      md5: 72396ae35b620b7fac9ee9f831b1d03f.dir
+      size: 2463314
+      nfiles: 20
+    - path: train_data
+      hash: md5
+      md5: a63d24993b53a5302793c72a41a79273.dir
+      size: 4932711
+      nfiles: 42
+    params:
+      params.yaml:
+        train.batch: 16
+        train.epochs: 50
+        train.imgsz: 640
+    outs:
+    - path: runs/train/weights/best.pt
+      hash: md5
+      md5: b2f926e34f9a46fd2845e0bf5a714600
+      size: 6204138
+  export:
+    cmd: python pipeline/stage3_export.py
+    deps:
+    - path: pipeline/stage3_export.py
+      hash: md5
+      md5: 18c1eb44ba7d629a1874359940c8821b
+      size: 3505
+    - path: runs/train/weights/best.pt
+      hash: md5
+      md5: b2f926e34f9a46fd2845e0bf5a714600
+      size: 6204138
+    outs:
+    - path: artifacts/model.onnx
+      hash: md5
+      md5: fe5d5c56bcc742860fe6a5843121d5b4
+      size: 12139082
+    - path: artifacts/model_int8.onnx
+      hash: md5
+      md5: 2d7fd802e4d9e4f9cfde15a6fa139cd9
+      size: 3229277
+  benchmark:
+    cmd: python pipeline/stage4_benchmark.py
+    deps:
+    - path: artifacts/model.onnx
+      hash: md5
+      md5: fe5d5c56bcc742860fe6a5843121d5b4
+      size: 12139082
+    - path: artifacts/model_int8.onnx
+      hash: md5
+      md5: 2d7fd802e4d9e4f9cfde15a6fa139cd9
+      size: 3229277
+    - path: pipeline/stage4_benchmark.py
+      hash: md5
+      md5: a8ba7820bc0b5a77969b817e814fa979
+      size: 3466
+    - path: train_data/images/val
+      hash: md5
+      md5: b1a46ff5c53e2128ab130cbc0fa3430e.dir
+      size: 2462711
+      nfiles: 10
+    outs:
+    - path: artifacts/benchmark_report.json
+      hash: md5
+      md5: 56860491096a36241922c6f668600d42
+      size: 592
+  register:
+    cmd: python pipeline/stage5_register.py
+    deps:
+    - path: artifacts/benchmark_report.json
+      hash: md5
+      md5: 56860491096a36241922c6f668600d42
+      size: 592
+    - path: artifacts/dataset_hash.txt
+      hash: md5
+      md5: 7e42bcdede197d4ad7967830c74b1b14
+      size: 32
+    - path: pipeline/stage5_register.py
+      hash: md5
+      md5: 7a6e51cb8ff8c2928e4f3ff0be4c2f93
+      size: 3378

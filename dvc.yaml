@@ -21,18 +21,16 @@ stages:
         - train.imgsz
         - train.batch
     outs:
-      - runs/detect/runs/train/weights/best.pt
-      - artifacts/training_metrics.json
+      - runs/train/weights/best.pt
 
   export:
     cmd: python pipeline/stage3_export.py
     deps:
       - pipeline/stage3_export.py
-      - runs/detect/runs/train/weights/best.pt
+      - runs/train/weights/best.pt
     outs:
       - artifacts/model.onnx
       - artifacts/model_int8.onnx
-      - artifacts/model_int8.tflite
 
   benchmark:
     cmd: python pipeline/stage4_benchmark.py
