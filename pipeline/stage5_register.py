@@ -84,8 +84,9 @@ if __name__ == "__main__":
     artifacts = [
         ("artifacts/model.onnx", "rescuevision-onnx-fp32"),
         ("artifacts/model_int8.onnx", "rescuevision-onnx-int8"),
-        ("artifacts/model_int8.tflite", "rescuevision-tflite-int8"),
     ]
+    if Path("artifacts/model_int8.tflite").exists():
+        artifacts.append(("artifacts/model_int8.tflite", "rescuevision-tflite-int8"))
     # Log per-class AP50 breakdown to MLflow tags for the INT8 model
     int8_result = next((r for r in report["results"] if r["format"] == "onnx_int8"), None)
     if int8_result:

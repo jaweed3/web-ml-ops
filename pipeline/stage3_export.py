@@ -97,7 +97,8 @@ if __name__ == "__main__":
         checkpoint = str(best if best.exists() else last)
     fp32 = export_onnx_fp32(checkpoint, cfg.train.imgsz)
     export_onnx_int8(fp32)
-    export_tflite_int8(checkpoint, cfg.train.imgsz)
+    tflite = export_tflite_int8(checkpoint, cfg.train.imgsz)
     mlflow_log("artifacts/model.onnx")
     mlflow_log("artifacts/model_int8.onnx")
-    mlflow_log("artifacts/model_int8.tflite")
+    if tflite:
+        mlflow_log("artifacts/model_int8.tflite")
