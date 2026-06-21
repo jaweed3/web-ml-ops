@@ -2,10 +2,9 @@ import os
 from pathlib import Path
 
 import mlflow
-import onnxruntime as ort
 
-from app.entity.config_entity import CacheConfig, DagsHubConfig, ModelRegistryConfig
 from app.utils.common import ensure_dir
+from core.config import CacheConfig, DagsHubConfig, ModelRegistryConfig
 from core.logger import get_logger
 
 log = get_logger("components.model_loader")
@@ -75,7 +74,7 @@ class ModelLoader:
 
     # ── public ────────────────────────────────────────────────────────────────
 
-    def load(self) -> tuple[Path, str, int]:
+    def load(self) -> tuple[Path, str]:
         """
         Download model from MLflow registry, falling back to the local cache
         if the registry is unreachable. Raises RuntimeError only when both
@@ -83,7 +82,7 @@ class ModelLoader:
 
         Returns
         -------
-        (onnx_path, version, imgsz) : tuple[Path, str, int]
+        (onnx_path, version) : tuple[Path, str]
         """
         self._init_tracking()
         ensure_dir(self._cache.model_dir)
@@ -102,7 +101,5 @@ class ModelLoader:
             onnx_path = self._find_cached_onnx()
             version = "cached"
 
-        sess = ort.InferenceSession(str(onnx_path), providers=["CPUExecutionProvider"])
-        imgsz = sess.get_inputs()[0].shape[2]
-        log.info("model_ready", extra={"path": str(onnx_path), "version": version, "imgsz": imgsz})
-        return onnx_path, version, imgsz
+        log.info("model_ready", extra={"path": str(onnx_path), "version": version})
+        return onnx_path, version
