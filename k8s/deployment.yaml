@@ -16,14 +16,14 @@ spec:
       annotations:
         prometheus.io/scrape: "true"
         prometheus.io/path: "/metrics"
-        prometheus.io/port: "8000"
+        prometheus.io/port: "8080"
     spec:
       containers:
         - name: api
-          image: rescuevision-api:latest
+          image: ghcr.io/jaweed3/rescuevision-serve:latest
           imagePullPolicy: IfNotPresent
           ports:
-            - containerPort: 8000
+            - containerPort: 8080
           env:
             - name: API_KEY
               valueFrom:
@@ -49,15 +49,15 @@ spec:
               memory: "512Mi"
           readinessProbe:
             httpGet:
-              path: /health
-              port: 8000
+              path: /ready
+              port: 8080
             initialDelaySeconds: 10
             periodSeconds: 5
             failureThreshold: 3
           livenessProbe:
             httpGet:
               path: /health
-              port: 8000
+              port: 8080
             initialDelaySeconds: 30
             periodSeconds: 15
             failureThreshold: 3

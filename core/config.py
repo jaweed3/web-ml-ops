@@ -79,6 +79,7 @@ class CacheConfig(BaseModel):
 class ServeConfig(BaseModel):
     dagshub: DagsHubConfig = DagsHubConfig()
     model: ModelRegistryConfig = ModelRegistryConfig()
+    candidate_model: ModelRegistryConfig | None = None
     inference: InferenceConfig = InferenceConfig()
     server: ServerConfig = ServerConfig()
     cache: CacheConfig = CacheConfig()

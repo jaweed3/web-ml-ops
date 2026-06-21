@@ -64,6 +64,11 @@ STARTUP_TIMESTAMP = Gauge(
     "Unix timestamp when the inference server became ready",
 )
 
+INPUT_DRIFT_SCORE = Gauge(
+    "rescuevision_input_drift_score",
+    "Mean z-score of current input image stats vs training baseline",
+)
+
 
 # ── Helper ────────────────────────────────────────────────────────────────────
 
@@ -78,3 +83,8 @@ def record_inference(latency_ms: float, n_detections: int) -> None:
     """Call from PredictionPipeline after each successful inference."""
     INFERENCE_LATENCY.observe(latency_ms / 1000)
     DETECTIONS_PER_REQUEST.observe(n_detections)
+
+
+def record_drift(score: float) -> None:
+    """Call from PredictionPipeline after each inference."""
+    INPUT_DRIFT_SCORE.set(score)

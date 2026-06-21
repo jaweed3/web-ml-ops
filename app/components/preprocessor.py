@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 
 from app.constant import DEFAULT_IMGSZ, LETTERBOX_PAD_VALUE
+from app.monitoring.drift import compute_image_stats
 from core.logger import get_logger
 
 log = get_logger("components.preprocessor")
@@ -10,7 +11,8 @@ log = get_logger("components.preprocessor")
 class ImagePreprocessor:
     """
     Converts raw image bytes into a normalized float32 tensor ready for
-    ONNX Runtime inference.
+    ONNX Runtime inference, also returning visual statistics for drift
+    monitoring.
 
     Steps:
     1. Decode image bytes (JPEG / PNG / WebP).
@@ -19,41 +21,24 @@ class ImagePreprocessor:
     4. Normalize pixel values to [0, 1].
     5. HWC → NCHW layout, add batch dim.
 
-    The output shape is always ``(1, 3, imgsz, imgsz)`` regardless of the
-    original image dimensions.
+    Returns ``(tensor, stats)`` where *stats* is a dict of brightness,
+    contrast, and entropy of the original decoded image.
     """
 
     def __init__(self, imgsz: int = DEFAULT_IMGSZ) -> None:
         self.imgsz = imgsz
 
-    # ── public ────────────────────────────────────────────────────────────────
-
-    def run(self, image_bytes: bytes) -> np.ndarray:
-        """
-        Parameters
-        ----------
-        image_bytes : bytes
-            Raw bytes of a JPEG, PNG, or WebP image.
-
-        Returns
-        -------
-        np.ndarray
-            Float32 tensor of shape ``(1, 3, imgsz, imgsz)``.
-
-        Raises
-        ------
-        ValueError
-            If the bytes cannot be decoded as an image.
-        """
+    def run(self, image_bytes: bytes) -> tuple[np.ndarray, dict[str, float]]:
         img = self._decode(image_bytes)
+        stats = compute_image_stats(img)
         img = self._letterbox(img)
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         img = img.astype(np.float32) / 255.0
-        img = np.transpose(img, (2, 0, 1))  # HWC → CHW
-        img = np.expand_dims(img, axis=0)  # CHW → NCHW
+        img = np.transpose(img, (2, 0, 1))
+        img = np.expand_dims(img, axis=0)
         blob = np.ascontiguousarray(img)
         log.info("preprocess_ok", shape=list(blob.shape), dtype=str(blob.dtype))
-        return blob
+        return blob, stats
 
     # ── private ───────────────────────────────────────────────────────────────
 

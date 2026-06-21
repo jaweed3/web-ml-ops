@@ -13,8 +13,9 @@ from app.components.runner import ONNXRunner
 from app.config.configuration import ConfigurationManager
 from app.dependencies import limiter
 from app.middleware.request_logger import RequestLoggerMiddleware
+from app.monitoring.drift import DriftDetector
 from app.pipeline.prediction_pipeline import PredictionPipeline
-from app.router import health, meta, metrics, predict
+from app.router import feedback, health, meta, metrics, predict
 from core.logger import get_logger
 
 log = get_logger("main")
@@ -40,7 +41,22 @@ async def lifespan(app: FastAPI):
         log.error("startup_failed", error=str(exc))
         raise
 
-    pipeline = PredictionPipeline(runner, inf_cfg)
+    # Optional shadow (candidate) runner — same model registry, different version
+    shadow_runner: ONNXRunner | None = None
+    candidate_cfg = cm.get_candidate_model_config()
+    if candidate_cfg is not None:
+        try:
+            c_loader = ModelLoader(dagshub_cfg, candidate_cfg, cache_cfg)
+            c_path, c_version = c_loader.load()
+            shadow_runner = ONNXRunner(c_path, c_version, n_threads=inf_cfg.n_threads)
+            log.info("shadow_runner_loaded", version=c_version)
+        except Exception as exc:
+            log.warning("shadow_runner_skipped", error=str(exc))
+
+    drift = DriftDetector()
+    pipeline = PredictionPipeline(
+        runner, inf_cfg, drift_detector=drift, shadow_runner=shadow_runner,
+    )
 
     # Warm up: one dummy inference so the first real request is not cold
     try:
@@ -83,3 +99,4 @@ app.include_router(health.router)
 app.include_router(predict.router)
 app.include_router(meta.router)
 app.include_router(metrics.router)
+app.include_router(feedback.router)

@@ -53,3 +53,6 @@ class ConfigurationManager:
 
     def get_cache_config(self) -> CacheConfig:
         return self._cfg.cache
+
+    def get_candidate_model_config(self) -> ModelRegistryConfig | None:
+        return self._cfg.candidate_model

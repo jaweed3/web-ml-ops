@@ -1,10 +1,11 @@
 from typing import Any
 
-from app.components.metrics import record_inference
+from app.components.metrics import record_drift, record_inference
 from app.components.postprocessor import DetectionPostprocessor
 from app.components.prediction_logger import log_prediction
 from app.components.preprocessor import ImagePreprocessor
 from app.components.runner import ONNXRunner
+from app.monitoring.drift import DriftDetector
 from core.config import InferenceConfig
 from core.logger import get_logger
 
@@ -15,12 +16,20 @@ class PredictionPipeline:
     """
     Orchestrates the full inference pipeline for a single request.
     Wires preprocessor → ONNX runner → postprocessor in sequence.
-    Fully testable in isolation — no module globals, no FastAPI imports.
+    Optionally runs drift detection and shadow model inference.
     """
 
-    def __init__(self, runner: ONNXRunner, inference_cfg: InferenceConfig) -> None:
+    def __init__(
+        self,
+        runner: ONNXRunner,
+        inference_cfg: InferenceConfig,
+        drift_detector: DriftDetector | None = None,
+        shadow_runner: ONNXRunner | None = None,
+    ) -> None:
         self._runner = runner
+        self._shadow_runner = shadow_runner
         self._imgsz = inference_cfg.imgsz
+        self._drift = drift_detector
         self._preprocessor = ImagePreprocessor(imgsz=inference_cfg.imgsz)
         self._postprocessor = DetectionPostprocessor(
             imgsz=inference_cfg.imgsz,
@@ -33,11 +42,19 @@ class PredictionPipeline:
         if not self._runner.is_ready:
             raise RuntimeError("Model is not ready yet — try again shortly")
 
-        blob = self._preprocessor.run(image_bytes)
+        blob, img_stats = self._preprocessor.run(image_bytes)
         raw_output, latency_ms, req_id = self._runner.run(blob)
         detections = self._postprocessor.run(raw_output)
 
         record_inference(latency_ms, len(detections))
+
+        if self._drift and self._drift.is_active:
+            drift = self._drift.score(img_stats)
+            record_drift(drift)
+
+        # ponytail: shadow runner — silent dual inference for A/B comparison
+        if self._shadow_runner is not None:
+            self._run_shadow(blob, req_id)
 
         log_prediction(
             request_id=req_id,
@@ -60,3 +77,17 @@ class PredictionPipeline:
             "image_shape": [self._imgsz, self._imgsz],
             "request_id": req_id,
         }
+
+    def _run_shadow(self, blob: Any, req_id: str) -> None:
+        try:
+            shadow_out, shadow_latency, _ = self._shadow_runner.run(blob)
+            shadow_det = self._postprocessor.run(shadow_out)
+            log.info(
+                "shadow_inference",
+                request_id=req_id,
+                shadow_version=self._shadow_runner.version,
+                shadow_detections=len(shadow_det),
+                shadow_latency_ms=shadow_latency,
+            )
+        except Exception as exc:
+            log.warning("shadow_inference_failed", request_id=req_id, error=str(exc))

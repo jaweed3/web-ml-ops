@@ -8,6 +8,13 @@ model:
   version: latest
   format: onnx_int8
 
+# Optional candidate model for shadow deployment (A/B comparison).
+# Uncomment to silently run a second model alongside the primary.
+# candidate_model:
+#   name: rescuevision-onnx-fp32
+#   version: latest
+#   format: onnx_fp32
+
 inference:
   imgsz: 640
   conf_threshold: 0.25

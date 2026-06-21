@@ -58,6 +58,19 @@ groups:
           summary: "No traffic for 5 minutes"
           description: "Server is receiving zero requests — may indicate upstream issue."
 
+      # ── Input drift ───────────────────────────────────────────────────────────
+
+      - alert: InputDriftHigh
+        expr: rescuevision_input_drift_score > 3.0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Input image distribution has drifted from training baseline"
+          description: >
+            Mean z-score vs training baseline is {{ $value | printf "%.2f" }}
+            (threshold: 3.0). Sustained drift may degrade model accuracy.
+
       # ── Model drift proxy ────────────────────────────────────────────────────
 
       - alert: DetectionRateDrop

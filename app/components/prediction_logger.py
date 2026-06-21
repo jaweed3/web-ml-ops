@@ -27,6 +27,9 @@ _DEFAULT_PATH = Path("artifacts/predictions.jsonl")
 _lock = threading.Lock()
 
 
+_FEEDBACK_PATH = Path("artifacts/feedback.jsonl")
+
+
 def log_prediction(
     *,
     request_id: str,
@@ -55,3 +58,26 @@ def log_prediction(
                 fh.write(json.dumps(record) + "\n")
     except Exception as exc:
         log.error("prediction_log_write_failed", error=str(exc))
+
+
+def log_feedback(
+    *,
+    request_id: str,
+    ground_truth: list[dict],
+    annotator: str = "",
+    log_path: Path = _FEEDBACK_PATH,
+) -> None:
+    """Append a ground-truth feedback record to the JSONL feedback log."""
+    record = {
+        "ts": datetime.now(timezone.utc).isoformat(),
+        "request_id": request_id,
+        "ground_truth": ground_truth,
+        "annotator": annotator,
+    }
+    try:
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        with _lock:
+            with log_path.open("a") as fh:
+                fh.write(json.dumps(record) + "\n")
+    except Exception as exc:
+        log.error("feedback_log_write_failed", error=str(exc))

@@ -2,7 +2,7 @@ name: RescueVision MLOps Pipeline
 
 on:
   push:
-    branches: ["**"]          # lint + test on every branch
+    branches: ["**"]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -16,8 +16,9 @@ on:
 
 env:
   PYTHON_VERSION: "3.12"
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
 
-# ── Job 1: Lint + type-check (all branches) ──────────────────────────────────
 jobs:
   quality:
     name: Code Quality
@@ -30,8 +31,8 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
           enable-cache: true
 
-      - name: Install quality tools
-        run: uv pip install ruff mypy pydantic fastapi
+      - name: Install dependencies
+        run: uv sync --only-group dev
 
       - name: Ruff lint
         run: uv run ruff check .
@@ -41,9 +42,8 @@ jobs:
 
       - name: Mypy type check
         run: uv run mypy app/ core/ pipeline/ --ignore-missing-imports
-        continue-on-error: true   # warn only until strict typing is complete
+        continue-on-error: true
 
-# ── Job 2: Test suite (all branches) ─────────────────────────────────────────
   test:
     name: Tests
     runs-on: ubuntu-latest
@@ -68,7 +68,6 @@ jobs:
           name: coverage-report
           path: coverage.xml
 
-# ── Job 3: Full pipeline → Staging (main branch only) ─────────────────────────
   pipeline-staging:
     name: Pipeline → Staging
     runs-on: ubuntu-latest
@@ -93,7 +92,7 @@ jobs:
       - name: Install base dependencies
         run: uv sync
 
-      - name: Install training dependencies (ultralytics + tensorflow)
+      - name: Install training dependencies
         run: uv pip install -r requirements-train.txt
 
       - name: Configure DVC remote credentials
@@ -119,6 +118,16 @@ jobs:
       - name: Stage 5 — Register to Staging
         run: uv run python -m pipeline.stage5_register --stage Staging
 
+      - name: Compute image drift baseline
+        run: uv run python scripts/compute_baseline.py
+
+      - name: Upload baseline artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: image-baseline-${{ github.sha }}
+          path: artifacts/image_baseline.json
+          retention-days: 90
+
       - name: Notify Telegram — awaiting approval
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
@@ -132,15 +141,13 @@ jobs:
           run_url = os.environ["RUN_URL"]
           sha = "${{ github.sha }}"[:7]
           msg = (
-            f"🟡 *Model registered to Staging*\n"
-            f"Commit: `{sha}`\n\n"
-            f"👉 [Approve or reject promotion to Production]({run_url})"
+            f"Model registered to Staging\n"
+            f"Commit: {sha}\n\n"
+            f"Approve/reject promotion: {run_url}"
           )
           payload = json.dumps({
-            "chat_id": chat_id,
-            "text": msg,
-            "parse_mode": "Markdown",
-            "disable_web_page_preview": True,
+            "chat_id": chat_id, "text": msg,
+            "parse_mode": "Markdown", "disable_web_page_preview": True,
           }).encode()
           req = urllib.request.Request(
             f"https://api.telegram.org/bot{token}/sendMessage",
@@ -157,7 +164,30 @@ jobs:
           path: artifacts/
           retention-days: 30
 
-# ── Job 4: Promote Staging → Production ───────────────────────────────────────
+  docker-build:
+    name: Docker Build & Push
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+
   promote-production:
     name: Promote Staging → Production
     runs-on: ubuntu-latest
