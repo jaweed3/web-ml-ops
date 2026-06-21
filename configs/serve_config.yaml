@@ -16,7 +16,7 @@ model:
 #   format: onnx_fp32
 
 inference:
-  imgsz: 640
+  imgsz: 320
   conf_threshold: 0.25
   iou_threshold: 0.45
   max_detections: 100

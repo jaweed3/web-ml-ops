@@ -41,7 +41,7 @@ class ModelLoader:
         mlflow.set_tracking_uri(uri)
         os.environ["MLFLOW_TRACKING_USERNAME"] = self._dagshub.username
         os.environ["MLFLOW_TRACKING_PASSWORD"] = self._dagshub.token
-        log.info("mlflow_tracking_configured", extra=uri)
+        log.info("mlflow_tracking_configured", uri=uri)
 
     def _resolve_version(self, name: str, requested: str) -> str:
         if requested != "latest":
@@ -62,11 +62,12 @@ class ModelLoader:
 
     def _find_cached_onnx(self) -> Path:
         """Return the most recently modified .onnx in the cache dir, or raise."""
-        candidates = list(self._cache.model_dir.glob("**/*.onnx"))
+        cache_dir = Path(self._cache.model_dir)
+        candidates = list(cache_dir.glob("**/*.onnx"))
         if not candidates:
             raise RuntimeError(
                 "MLflow registry unreachable and no cached model found in "
-                f"{self._cache.model_dir} — cannot start server"
+                f"{cache_dir} — cannot start server"
             )
         best = max(candidates, key=lambda p: p.stat().st_mtime)
         log.warning("using_cached_model", extra={"path": str(best)})
@@ -85,7 +86,8 @@ class ModelLoader:
         (onnx_path, version) : tuple[Path, str]
         """
         self._init_tracking()
-        ensure_dir(self._cache.model_dir)
+        cache_dir = Path(self._cache.model_dir)
+        ensure_dir(cache_dir)
 
         name = self._model.name
         try:
@@ -93,7 +95,7 @@ class ModelLoader:
             log.info("downloading_artifact", extra={"name": name, "version": version})
             local_path = mlflow.artifacts.download_artifacts(
                 artifact_uri=f"models:/{name}/{version}",
-                dst_path=str(self._cache.model_dir),
+                dst_path=str(cache_dir),
             )
             onnx_path = self._find_onnx(local_path)
         except Exception as exc:
