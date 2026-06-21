@@ -1,19 +1,14 @@
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, Request
 
-from app.components.runner import get_runner
+from app.components.runner import ONNXRunner
+from app.dependencies import get_runner
 from app.schema.meta import ModelInfoResponse, ModelVersionResponse
 
 router = APIRouter(tags=["model"])
 
 
 @router.get("/model/info", response_model=ModelInfoResponse)
-def model_info(request: Request) -> ModelInfoResponse:
-    """Full metadata about the currently loaded model."""
-    try:
-        runner = get_runner()
-    except RuntimeError as exc:
-        raise HTTPException(status_code=503, detail=str(exc)) from exc
-
+def model_info(request: Request, runner: ONNXRunner = Depends(get_runner)) -> ModelInfoResponse:
     return ModelInfoResponse(
         name=request.app.state.model_name,
         version=runner.version,
@@ -24,9 +19,5 @@ def model_info(request: Request) -> ModelInfoResponse:
 
 
 @router.get("/model/version", response_model=ModelVersionResponse)
-def model_version() -> ModelVersionResponse:
-    """Current model version."""
-    try:
-        return ModelVersionResponse(version=get_runner().version)
-    except RuntimeError as exc:
-        raise HTTPException(status_code=503, detail=str(exc)) from exc
+def model_version(runner: ONNXRunner = Depends(get_runner)) -> ModelVersionResponse:
+    return ModelVersionResponse(version=runner.version)
