@@ -1,10 +1,11 @@
 import os
 
-from fastapi import Header, HTTPException
+from fastapi import Header, HTTPException, Request
 from fastapi.security import APIKeyHeader
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
+from app.components.runner import ONNXRunner
 from app.constant import MAX_FILE_SIZE_BYTES
 
 # ── Rate limiter ──────────────────────────────────────────────────────────────
@@ -57,3 +58,10 @@ def check_content_length(content_length: str | None = Header(default=None)) -> N
                 status_code=422,
                 detail=detail_message,
             )
+
+
+def get_runner(request: Request) -> ONNXRunner:
+    runner = getattr(request.app.state, "runner", None)
+    if runner is None:
+        raise HTTPException(status_code=503, detail="Model not initialized")
+    return runner
