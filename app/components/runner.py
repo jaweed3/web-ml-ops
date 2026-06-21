@@ -13,18 +13,10 @@ log = get_logger("components.runner")
 
 class ONNXRunner:
     """
-    Wraps an ONNX Runtime InferenceSession as a thread-safe singleton.
+    Wraps an ONNX Runtime InferenceSession.
 
     Session initialization is expensive — it happens once when the object is
-    constructed (at server startup). Inference calls are protected by a lock
-    so multiple concurrent requests don't corrupt session state.
-
-    Attributes
-    ----------
-    version : str
-        Model version string pulled from MLflow registry.
-    loaded_at : float | None
-        ``time.time()`` timestamp when the session became ready, or None.
+    constructed (at server startup). Inference calls are thread-safe.
     """
 
     def __init__(self, model_path: Path, version: str, n_threads: int = ORT_INTRA_THREADS) -> None:
@@ -46,33 +38,12 @@ class ONNXRunner:
         self._input_shape = self._session.get_inputs()[0].shape
         self.loaded_at = time.time()
 
-        log.info(
-            "session_ready",
-            input_name=self._input_name,
-            input_shape=self._input_shape,
-        )
-
-    # ── public ────────────────────────────────────────────────────────────────
+        log.info("session_ready", input_name=self._input_name, input_shape=self._input_shape)
 
     def run(self, blob: np.ndarray) -> tuple[list[np.ndarray], float, str]:
-        """
-        Run inference on a preprocessed image blob.
-
-        Parameters
-        ----------
-        blob : np.ndarray
-            Shape ``(1, 3, H, W)``, dtype float32.
-
-        Returns
-        -------
-        (outputs, latency_ms, request_id) : tuple
-        """
         request_id = new_request_id()
         t0 = time.perf_counter()
-
-        # ORT InferenceSession.run() is thread-safe — concurrent requests are fine
         outputs = self._session.run(None, {self._input_name: blob})
-
         latency = elapsed_ms(t0)
         log.info("inference_complete", request_id=request_id, latency_ms=latency)
         return outputs, latency, request_id
@@ -84,20 +55,3 @@ class ONNXRunner:
     @property
     def is_ready(self) -> bool:
         return self.loaded_at is not None
-
-
-# ── Module-level singleton ────────────────────────────────────────────────────
-
-_runner: ONNXRunner | None = None
-
-
-def get_runner() -> ONNXRunner:
-    if _runner is None:
-        raise RuntimeError("ONNXRunner not initialized — call init_runner() at application startup")
-    return _runner
-
-
-def init_runner(model_path: Path, version: str, n_threads: int = ORT_INTRA_THREADS) -> ONNXRunner:
-    global _runner
-    _runner = ONNXRunner(model_path, version, n_threads)
-    return _runner
