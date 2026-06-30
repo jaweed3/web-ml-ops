@@ -65,6 +65,16 @@ ONNX Runtime session initialization mahal — bisa 2-5 detik untuk YOLOv8n. Kala
 
 ONNX Runtime InferenceSession tidak fork-safe. Kalau workers > 1, tiap worker butuh session sendiri. Untuk sekarang dibiarkan 1 worker + async I/O untuk concurrent request handling. Kalau butuh scale, gunakan multiple container instances di belakang load balancer — bukan multiple workers dalam satu container.
 
+### Kenapa config entity di-unify ke Pydantic?
+
+Dulu ada tiga approach parallel: frozen dataclass di `entity/`, raw dict dari yaml, dan Pydantic model. Ini menyebabkan inconsistency — kadang field name beda, kadang type coercion gak jalan. Semua config sekarang didefinisikan sebagai Pydantic model di `core/config.py`:
+- `TrainConfig` — training hyperparams
+- `ServeConfig` — serving layer config
+- `InferenceConfig` — inference hyperparams
+- Nested `CacheConfig`, `CandidateModelConfig`, `ServerConfig`, dll
+
+Env var override built-in via `Field(validation_alias=...)`.
+
 ---
 
 ## Data & model versioning
@@ -84,6 +94,49 @@ DVC:
 ### Kenapa MLflow di DagsHub, bukan self-hosted?
 
 DagsHub menyediakan MLflow tracking + DVC remote storage dalam satu akun gratis. Untuk proyek ini ukurannya cukup. Self-hosted MLflow butuh infra tambahan (server, storage, auth) yang di luar scope pipeline ini.
+
+---
+
+## Drift detection
+
+### Kenapa drift score dihitung per-request, bukan batch?
+
+Batch processing berarti nunggu akumulasi N request sebelum compute — delay deteksi. Per-request scoring langsung expose `rescuevision_input_drift_score` gauge. Alert bisa fire segera setelah drift terdeteksi.
+
+### Kenapa baseline di-compute offline (`scripts/compute_baseline.py`)?
+
+Baseline computation butuh akses ke training images (via DVC pull). Ini operasi berat yang gak perlu dilakukan di serving path. Baseline disimpan sebagai file JSON di `artifacts/drift_baseline.json` dan di-load DriftDetector saat startup.
+
+### Kenapa Mahalanobis distance, bukan KL divergence?
+
+Tiga statistik (mean brightness, std brightness, entropy) — distribution unknown, bisa non-Gaussian. Mahalanobis menangkap covariance antar statistik tanpa asumsi distribution shape. KL divergence butuh density estimation yang lebih kompleks.
+
+---
+
+## Feedback loop
+
+### Kenapa feedback disimpan ke JSONL, bukan database?
+
+JSONL (JSON Lines) adalah append-only log — tidak perlu schema migration, tidak perlu connection pooling, cocok untuk data yang jarang di-query. Feedback dapat dipairing dengan prediction log via `request_id` untuk offline evaluation.
+
+### `artifacts/predictions.jsonl` + `artifacts/feedback.jsonl`
+
+Prediction log menyimpan model output per request. Feedback log menyimpan ground truth. Join via `request_id` → compute serving mAP, precision-recall.
+
+---
+
+## Shadow deployment
+
+### Kenapa shadow deployment, bukan A/B testing?
+
+Shadow deployment menjalankan candidate model di production tanpa mempengaruhi response user. Output candidate di-log untuk comparison. Ini lebih aman dari A/B testing karena:
+- Tidak ada risk candidate model serve hasil yang salah ke user
+- Bisa collect data untuk validation sebelum cutover
+- Tidak perlu routing infrastructure
+
+### Candidate model config
+
+Candidate model didefinisikan di `configs/serve_config.yaml` di bawah `candidate_model`. Kalau section ini tidak ada atau kosong, shadow runner tidak di-initialize. Tidak ada overhead runtime kalau shadow tidak aktif.
 
 ---
 
@@ -117,3 +170,7 @@ Pemisahan ini mencegah model baru langsung ke production hanya karena metric gat
 ### Kenapa promote-production hanya bisa di-trigger manual?
 
 Karena promosi ke production adalah keputusan yang irreversible (walaupun bisa di-rollback). Otomatis promosi berarti setiap merge ke main bisa langsung mengubah model yang sedang serve request di production — ini terlalu beresiko tanpa human review.
+
+### Kenapa docker-build parallel dengan pipeline-staging?
+
+Kedua job tidak punya dependency satu sama lain. Pipeline-staging menghasilkan model baru; docker-build membangun serving image tanpa model. Dengan fail-fast paralel, keduanya jalan bareng — feedback lebih cepat tanpa menunggu pipeline selesai.
