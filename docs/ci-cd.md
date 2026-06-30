@@ -65,7 +65,24 @@ Steps:
 
 ---
 
-## Job 4 — Promote to Production
+## Job 4 — Docker Build & Push
+
+**Trigger:** push to `main` (runs in parallel with pipeline-staging)  
+**Environment:** `staging`
+
+Builds the serving image and pushes to GitHub Container Registry:
+
+```bash
+docker build -t ghcr.io/${{ github.repository }}/rescuevision-serve:latest .
+docker tag ...:latest ...:${{ github.sha }}
+docker push --all-tags ghcr.io/${{ github.repository }}/rescuevision-serve
+```
+
+The image includes only the serving layer (`app/`, `core/`, `configs/`). The model is pulled at runtime from MLflow, not baked into the image.
+
+---
+
+## Job 5 — Promote to Production
 
 **Trigger:** manual only (`workflow_dispatch` with `promote_to_production = true`)  
 **Environment:** `production`
