@@ -14,9 +14,12 @@ push to any branch
 push to main
   └── quality
         └── test
-              └── pipeline-staging
-                    → dvc repro
-                    → register to Staging
+              fail-fast:
+                ├── pipeline-staging
+                │     → dvc repro
+                │     → register to Staging
+                └── docker-build
+                      → build & push image to ghcr.io
 
 workflow_dispatch (manual)
   └── promote-production
