@@ -40,7 +40,7 @@ def ensure_dir(path: Path) -> Path:
 
 def new_request_id(prefix: str = "req") -> str:
     """Generate a short unique request ID, e.g. ``req_a3f92b1c``."""
-    return f"{prefix}_{uuid.uuid4().hex[:8]}"
+    return f"{prefix}_{uuid.uuid4().hex[:12]}"
 
 
 # ── Timing ────────────────────────────────────────────────────────────────────
