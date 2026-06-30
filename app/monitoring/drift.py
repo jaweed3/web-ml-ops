@@ -33,7 +33,7 @@ def compute_baseline(image_dir: Path) -> dict[str, float]:
         log.warning("no_images_for_baseline", dir=str(image_dir))
         return {}
 
-    all_stats = {k: [] for k in ("brightness", "contrast", "entropy")}
+    all_stats: dict[str, list[float]] = {k: [] for k in ("brightness", "contrast", "entropy")}
     for p in paths:
         img = cv2.imread(str(p))
         if img is None:
@@ -72,12 +72,12 @@ class DriftDetector:
         if not self._baseline:
             return 0.0
         scores = []
-        for key in stats:
+        for key, val in stats.items():
             mean_key = f"mean_{key}"
             std_key = f"std_{key}"
             if mean_key not in self._baseline or std_key not in self._baseline:
                 continue
-            z = abs(stats[key] - self._baseline[mean_key]) / self._baseline[std_key]
+            z = abs(val - self._baseline[mean_key]) / self._baseline[std_key]
             scores.append(z)
         return float(np.mean(scores)) if scores else 0.0
 
