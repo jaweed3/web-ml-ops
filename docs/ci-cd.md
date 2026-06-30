@@ -105,6 +105,9 @@ Archives any previously active Production versions automatically.
 | `DAGSHUB_USERNAME` | Your DagsHub username |
 | `DAGSHUB_REPO` | `rescuevision-mlops` |
 | `DAGSHUB_TOKEN` | DagsHub access token |
+| `GITHUB_TOKEN` | Auto-injected — has push permission to ghcr.io for the repo |
+
+For `docker-build`, the built-in `GITHUB_TOKEN` authenticates to `ghcr.io`. No additional PAT needed.
 
 ---
 
@@ -128,7 +131,7 @@ For `production`, enable "Required reviewers" and add yourself or your team.
 | Branch pattern | What happens |
 |---|---|
 | `feat/*`, `fix/*` | lint + test only |
-| `main` | lint → test → full pipeline → register to Staging |
+| `main` | lint → test → full pipeline + docker build → register to Staging |
 | manual trigger | promote Staging → Production |
 
 Pre-commit hook prevents committing directly to `main`:
