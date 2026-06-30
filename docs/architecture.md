@@ -17,25 +17,23 @@ Setiap stage import dari `core/` untuk logging, config, dan MLflow. Tidak ada st
 
 `train_config.yaml` adalah config lengkap (semua field). `params.yaml` adalah subset khusus DVC — hanya nilai yang perlu DVC pantau untuk mendeteksi kapan stage harus dijalankan ulang. Mengubah nilai di `params.yaml` akan trigger downstream stages otomatis saat `dvc repro`.
 
-### Kenapa `app/` punya `constant/`, `entity/`, `config/`, `components/`, `pipeline/`?
+### Kenapa `app/` pakai layered structure?
 
-Pattern ini ngikutin prinsip dependency inversion — layer atas gak boleh import layer bawah secara langsung:
+Layered dependency injection — layer atas gak boleh import layer bawah secara langsung:
 
 ```
 constant   (tidak import apapun dari app)
   ↓
-entity     (import constant)
+config     (import constant)
   ↓
-config     (import entity, constant)
-  ↓
-components (import config, entity, constant, core)
+components (import config, constant, core)
   ↓
 pipeline   (import components)
   ↓
 router     (import pipeline, schema)
 ```
 
-Setiap layer bisa di-test tanpa layer di atasnya.
+`entity/` dihapus di refactor — semua config model unified ke Pydantic di `core/config.py`. Tidak perlu layer terpisah untuk config entity.
 
 ---
 
