@@ -63,6 +63,23 @@ rate(rescuevision_detections_per_request_sum[5m])
 / rate(rescuevision_detections_per_request_count[5m])
 ```
 
+**Drift score (latest):**
+```promql
+rescuevision_input_drift_score
+```
+
+---
+
+## Alerts
+
+`monitoring/alerts.yml`:
+
+| Alert | Expression | Severity | Description |
+|---|---|---|---|
+| `InputDriftHigh` | `rescuevision_input_drift_score > 3.0` | warning | Input distribution differs significantly from training baseline |
+
+Loaded by Prometheus at startup via `rule_files` in the scrape config.
+
 ---
 
 ## Grafana dashboard
