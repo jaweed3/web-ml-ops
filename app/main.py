@@ -101,6 +101,18 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
 app.add_middleware(RequestLoggerMiddleware)
+
+# ponytail: CORS origins from env var, comma-separated. Empty = no cross-origin.
+_cors = os.environ.get("CORS_ORIGINS", "")
+if _cors:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=[o.strip() for o in _cors.split(",")],
+        allow_methods=["GET", "POST"],
+        allow_headers=["X-API-Key", "Content-Type"],
+    )
+
+app.add_middleware(SecurityHeadersMiddleware)
 app.include_router(health.router)
 app.include_router(predict.router)
 app.include_router(meta.router)
