@@ -27,8 +27,10 @@ def ready(runner: ONNXRunner = Depends(get_runner)) -> Response:
             status_code=503,
             content=ReadyResponse(status="loading").model_dump(),
         )
+    loaded_at = runner.loaded_at
+    assert loaded_at is not None
     return ReadyResponse(
         status="ready",
         model_version=runner.version,
-        loaded_at=datetime.fromtimestamp(runner.loaded_at, tz=timezone.utc).isoformat(),
+        loaded_at=datetime.fromtimestamp(loaded_at, tz=timezone.utc).isoformat(),
     )
