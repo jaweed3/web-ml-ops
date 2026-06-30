@@ -35,6 +35,7 @@ The server exposes `GET /metrics` in Prometheus text format. Scraped every 15 se
 | `rescuevision_detections_per_request` | Histogram | — | Detections returned per predict call |
 | `rescuevision_model_info` | Info | version, format | Currently loaded model metadata |
 | `rescuevision_startup_timestamp_seconds` | Gauge | — | Unix timestamp when model became ready |
+| `rescuevision_input_drift_score` | Gauge | — | Mahalanobis-distance drift score (> 3.0 = alert) |
 
 ### Useful PromQL queries
 
