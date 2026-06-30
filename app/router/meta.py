@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends, Request
 
 from app.components.runner import ONNXRunner
-from app.dependencies import get_runner
+from app.dependencies import get_runner, require_api_key
 from app.schema.meta import ModelInfoResponse, ModelVersionResponse
 
-router = APIRouter(tags=["model"])
+router = APIRouter(tags=["model"], dependencies=[Depends(require_api_key)])
 
 
 @router.get("/model/info", response_model=ModelInfoResponse)
