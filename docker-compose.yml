@@ -12,6 +12,7 @@ services:
       MODEL_NAME: ${MODEL_NAME:-rescuevision-onnx-int8}
       MODEL_VERSION: ${MODEL_VERSION:-latest}
       MODEL_FORMAT: ${MODEL_FORMAT:-onnx_int8}
+      API_KEY: ${API_KEY}
       CONF_THRESHOLD: ${CONF_THRESHOLD:-0.25}
       IOU_THRESHOLD: ${IOU_THRESHOLD:-0.45}
     healthcheck:
@@ -46,8 +47,8 @@ services:
     ports:
       - "3000:3000"
     environment:
-      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
-      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-rescuevision}
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD}
       GF_USERS_ALLOW_SIGN_UP: "false"
       GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/rescuevision.json
     volumes:
