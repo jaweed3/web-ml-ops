@@ -98,6 +98,7 @@ The `RescueVision — Inference Observability` dashboard is auto-provisioned at 
 | End-to-End Request Duration | Full HTTP round trip for `/predict` |
 | Request Rate by Status Code | 200 vs 4xx vs 5xx over time |
 | Detections Histogram | How many detections per request |
+| Input Drift Score | Current drift score (threshold line at 3.0) |
 
 ---
 
@@ -108,6 +109,9 @@ The `RescueVision — Inference Observability` dashboard is auto-provisioned at 
 ```yaml
 global:
   scrape_interval: 15s
+
+rule_files:
+  - alerts.yml
 
 scrape_configs:
   - job_name: rescuevision-serve
