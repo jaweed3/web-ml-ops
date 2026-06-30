@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 
 from app.components.runner import ONNXRunner
 from app.dependencies import get_runner
@@ -21,7 +21,7 @@ def health() -> HealthResponse:
 @router.get(
     "/ready", response_model=ReadyResponse, responses={503: {"description": "Model not ready"}}
 )
-def ready(runner: ONNXRunner = Depends(get_runner)):
+def ready(runner: ONNXRunner = Depends(get_runner)) -> Response:
     if not runner.is_ready:
         return JSONResponse(
             status_code=503,
