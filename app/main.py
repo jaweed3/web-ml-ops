@@ -118,3 +118,13 @@ app.include_router(predict.router)
 app.include_router(meta.router)
 app.include_router(metrics.router)
 app.include_router(feedback.router)
+
+
+@functools.cache
+def _landing_html() -> str:
+    return Path("landing/index.html").read_text()
+
+
+@app.get("/", include_in_schema=False)
+def landing() -> HTMLResponse:
+    return HTMLResponse(_landing_html())
