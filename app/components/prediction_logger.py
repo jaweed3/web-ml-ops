@@ -53,10 +53,9 @@ def log_prediction(
     }
     try:
         log_path.parent.mkdir(parents=True, exist_ok=True)
-        with _lock:
-            with log_path.open("a") as fh:
-                fh.write(json.dumps(record) + "\n")
-    except Exception as exc:
+        with _lock, log_path.open("a") as fh:
+            fh.write(json.dumps(record) + "\n")
+    except OSError as exc:
         log.error("prediction_log_write_failed", error=str(exc))
 
 
@@ -76,8 +75,7 @@ def log_feedback(
     }
     try:
         log_path.parent.mkdir(parents=True, exist_ok=True)
-        with _lock:
-            with log_path.open("a") as fh:
-                fh.write(json.dumps(record) + "\n")
-    except Exception as exc:
+        with _lock, log_path.open("a") as fh:
+            fh.write(json.dumps(record) + "\n")
+    except OSError as exc:
         log.error("feedback_log_write_failed", error=str(exc))
