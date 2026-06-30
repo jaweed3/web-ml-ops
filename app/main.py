@@ -1,3 +1,4 @@
+import functools
 import os
 import time
 from contextlib import asynccontextmanager
@@ -10,7 +11,6 @@ from fastapi.responses import HTMLResponse
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
-from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.components.metrics import record_model_ready
 from app.components.model_loader import ModelLoader
@@ -18,6 +18,7 @@ from app.components.runner import ONNXRunner
 from app.config.configuration import ConfigurationManager
 from app.dependencies import limiter
 from app.middleware.request_logger import RequestLoggerMiddleware
+from app.middleware.security import SecurityHeadersMiddleware
 from app.monitoring.drift import DriftDetector
 from app.pipeline.prediction_pipeline import PredictionPipeline
 from app.router import feedback, health, meta, metrics, predict
