@@ -1,3 +1,5 @@
+import re
+
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from fastapi.concurrency import run_in_threadpool
 
@@ -59,16 +61,17 @@ async def predict(request: Request, file: UploadFile = File(...)) -> PredictResp
 
     try:
         result = await run_in_threadpool(pipeline.run, image_bytes)
-    except ValueError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
-    except RuntimeError as exc:
-        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except ValueError:
+        raise HTTPException(status_code=422, detail="Invalid or corrupt image.") from None
+    except RuntimeError:
+        raise HTTPException(status_code=503, detail="Model not ready.") from None
 
+    safe_filename = re.sub(r"[^\w\.\-]", "_", (file.filename or "unnamed"))[:64]
     log.info(
         "prediction_served",
         request_id=result.get("request_id"),
         n_detections=len(result.get("detections", [])),
-        filename=file.filename,
+        filename=safe_filename,
     )
 
     return PredictResponse(
