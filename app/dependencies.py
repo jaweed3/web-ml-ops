@@ -1,3 +1,4 @@
+import hmac
 import os
 
 from fastapi import Header, HTTPException, Request
@@ -30,7 +31,7 @@ def require_api_key(x_api_key: str | None = Header(default=None, alias="X-API-Ke
     """
     if not _API_KEY:
         return  # auth disabled
-    if x_api_key != _API_KEY:
+    if not hmac.compare_digest(x_api_key or "", _API_KEY):
         raise HTTPException(status_code=401, detail="Invalid or missing API key.")
 
 
