@@ -1,8 +1,8 @@
 # RescueVision MLOps
 
-End-to-end ML pipeline for SAR victim detection — from versioned dataset to edge-ready model artifacts and a production inference server.
+End-to-end ML pipeline for SAR victim detection — from versioned dataset to edge-ready model artifacts and a production inference server with drift monitoring, feedback collection, and shadow deployment.
 
-> **Testing status:** All stages verified end-to-end via `dvc repro` (debug mode) and `make debug`. Unit tests cover the serving layer (74% coverage, enforced), metric gate logic, export shapes, and benchmark SLOs.
+> **Status:** Serving layer deployed with drift detection, feedback loop, and shadow deployment. CI/CD builds and publishes Docker images. All 43 tests pass, ruff clean.
 
 ---
 
@@ -19,6 +19,9 @@ dataset (DVC)
   → benchmark + metric gate
   → MLflow Model Registry (Staging → Production)
   → FastAPI inference server
+    ├── drift detection (input statistics vs training baseline)
+    ├── feedback collection (POST /feedback → JSONL)
+    └── shadow deployment (candidate model A/B comparison)
   → Prometheus + Grafana
 ```
 
@@ -125,7 +128,36 @@ uv run python -m pipeline.stage_promote
 
 # Debug mode — runs stages 1-3 with dummy data, no GPU required
 make debug
+
+# Compute drift baseline from training images
+uv run python scripts/compute_baseline.py
 ```
+
+---
+
+## Features
+
+### Drift Detection
+
+Input distribution drift is computed per-request and compared against a training-data baseline. Brightness, contrast, and entropy statistics are scored via a Mahalanobis-distance heuristic. Score > 3.0 triggers a Prometheus alert (`InputDriftHigh`).
+
+- **Baseline:** computed offline with `scripts/compute_baseline.py` from training images
+- **Metric:** `rescuevision_input_drift_score` gauge
+- **Integration:** runs inside `PredictionPipeline`, non-blocking
+
+### Feedback Loop
+
+Ground truth labels can be submitted after prediction for offline evaluation:
+
+```
+POST /feedback  {"request_id": "...", "detections": [...]}
+```
+
+Logged to `artifacts/feedback.jsonl`. Paired with `artifacts/predictions.jsonl` via `request_id` to compute serving mAP.
+
+### Shadow Deployment
+
+A candidate model can be loaded alongside the primary for silent A/B comparison. Configured in `configs/serve_config.yaml` under `candidate_model`. The shadow runner processes every request but its output is only logged — never returned to the client.
 
 ---
 
@@ -135,10 +167,10 @@ make debug
 |---|---|
 | [docs/setup.md](docs/setup.md) | Prerequisites, install, env vars, DVC remote |
 | [docs/pipeline.md](docs/pipeline.md) | Phase 1 — stages 1-5 reference |
-| [docs/serving.md](docs/serving.md) | Phase 2 — API reference, Docker, architecture |
-| [docs/monitoring.md](docs/monitoring.md) | Prometheus metrics, Grafana dashboard |
+| [docs/serving.md](docs/serving.md) | Phase 2 — API reference, Docker, architecture, drift/feedback/shadow |
+| [docs/monitoring.md](docs/monitoring.md) | Prometheus metrics, Grafana dashboard, drift alerts |
 | [docs/testing.md](docs/testing.md) | How to test everything, start to finish |
-| [docs/ci-cd.md](docs/ci-cd.md) | CI/CD jobs, environments, secrets |
+| [docs/ci-cd.md](docs/ci-cd.md) | CI/CD jobs, environments, secrets, docker-build |
 | [docs/architecture.md](docs/architecture.md) | Architecture decisions and trade-offs |
 
 ---
@@ -148,30 +180,33 @@ make debug
 ```
 rescuevision-mlops/
 ├── pipeline/          # Stage 1-5 scripts
-├── core/              # Logger, config loader, MLflow helpers
+├── core/              # Logger, Pydantic config models, MLflow helpers
 ├── app/               # FastAPI serving layer
-│   ├── components/    # ModelLoader, Preprocessor, Postprocessor, Runner, Metrics
+│   ├── components/    # ModelLoader, Preprocessor, Postprocessor, Runner, Metrics, PredictionLogger
 │   ├── config/        # ConfigurationManager
 │   ├── constant/      # All constants
-│   ├── entity/        # Dataclass config entities
-│   ├── pipeline/      # PredictionPipeline
-│   ├── router/        # FastAPI routes
+│   ├── monitoring/    # DriftDetector, image stats
+│   ├── pipeline/      # PredictionPipeline (wires preprocessor → runner → postprocessor + drift)
+│   ├── router/        # FastAPI routes (predict, health, meta, metrics, feedback)
 │   ├── schema/        # Pydantic request/response models
 │   ├── middleware/     # Request logger + metrics hook
+│   ├── dependencies.py# FastAPI DI (get_runner)
 │   └── utils/         # Shared utilities
 ├── configs/           # train_config.yaml, serve_config.yaml
-├── monitoring/        # Prometheus scrape config + Grafana provisioning
+├── monitoring/        # Prometheus scrape config + Grafana provisioning + alerts.yml
+├── scripts/           # compute_baseline.py, smoke_test.sh
 ├── tests/
-│   ├── serve/             # API + component unit tests (mocked, 74% coverage)
-│   ├── test_metric_gate.py  # Pure logic tests for metric gate
+│   ├── serve/         # API + component unit tests (mocked)
+│   ├── test_metric_gate.py
 │   ├── test_data.py
 │   ├── test_export.py
 │   ├── test_benchmark.py
-│   └── test_register.py   # MLflow registry smoke tests (needs DAGSHUB_* env)
+│   └── test_register.py
 ├── research/          # Jupyter notebooks
-├── scripts/           # smoke_test.sh
 ├── docs/              # All documentation
 ├── dvc.yaml           # Pipeline DAG
+├── docker-compose.yml # Infra stack
+├── Dockerfile         # Multi-stage uv build
 ├── pyproject.toml     # Ruff, mypy, pytest config
-└── .pre-commit-config.yaml
+└── k8s/               # Kubernetes manifests (deployment, service)
 ```
