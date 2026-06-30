@@ -70,6 +70,9 @@ class ServerConfig(BaseModel):
     port: int = 8080
     workers: int = 1
     max_file_size_mb: int = 10
+    cors_origins: list[str] = []
+    ssl_keyfile: str = ""
+    ssl_certfile: str = ""
 
 
 class CacheConfig(BaseModel):
