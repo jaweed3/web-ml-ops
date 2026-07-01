@@ -19,6 +19,7 @@ Environment variables:
 import os
 import sys
 import time
+from http import HTTPStatus
 
 import mlflow
 import requests
@@ -62,7 +63,7 @@ def _get_map50(client: MlflowClient, run_id: str | None) -> float | None:
         return None
 
 
-def _latest_version_in_stage(client: MlflowClient, name: str, stage: str):
+def _latest_version_in_stage(client: MlflowClient, name: str, stage: str) -> object | None:
     versions = client.search_model_versions(f"name = '{name}' and tags.stage = '{stage}'")
     if not versions:
         return None
@@ -94,7 +95,7 @@ def _verify_serving(url: str, verify_secs: int) -> bool:
         try:
             r = requests.get(f"{url}/health", timeout=5)
             total += 1
-            if r.status_code != 200:
+            if r.status_code != HTTPStatus.OK:
                 failures += 1
                 log.warning("health_check_failed", extra={"status": r.status_code})
         except Exception as exc:
