@@ -70,6 +70,34 @@ Body: file=<image>   (JPEG / PNG / WebP, max 10 MB)
 
 ---
 
+### `POST /feedback`
+
+Submit ground truth labels for offline evaluation. Pairs with predictions via `request_id`.
+
+**Request:**
+```json
+{
+  "request_id": "req_a3f92b1c",
+  "detections": [
+    {
+      "class_id": 0,
+      "class_name": "person",
+      "confidence": 0.87,
+      "bbox": {"x1": 142, "y1": 88, "x2": 310, "y2": 445}
+    }
+  ]
+}
+```
+
+**Response `200`:**
+```json
+{"status": "accepted", "request_id": "req_a3f92b1c"}
+```
+
+Logged to `artifacts/feedback.jsonl`.
+
+---
+
 ### `GET /health`
 
 Liveness check. Returns 200 if the process is alive.
