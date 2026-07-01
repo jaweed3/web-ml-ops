@@ -250,6 +250,14 @@ server:
   port: 8080
   workers: 1       # keep at 1 — ONNX session is not fork-safe
   max_file_size_mb: 10
+
+cache:
+  model_dir: /tmp/rescuevision_model   # local cache for downloaded artifacts
+
+candidate_model:                       # optional shadow deployment
+  name: rescuevision-onnx-fp32         # override: CANDIDATE_MODEL_NAME
+  version: latest                      # override: CANDIDATE_MODEL_VERSION
+  format: onnx_fp32                    # override: CANDIDATE_MODEL_FORMAT
 ```
 
 ---
