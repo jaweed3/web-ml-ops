@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RescueVision — MLOps for Search & Rescue</title>
+<meta name="description" content="End-to-end MLOps platform for search-and-rescue victim detection. Train, quantize, benchmark, and serve YOLOv8n models from drone footage.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+:root{
+  --bg-primary:#0B0F19;
+  --bg-secondary:#111827;
+  --bg-tertiary:#1E293B;
+  --text-primary:#F8FAFC;
+  --text-secondary:#94A3B8;
+  --accent-blue:#3B82F6;
+  --accent-amber:#F59E0B;
+  --accent-emerald:#10B981;
+  --accent-rose:#F43F5E;
+  --border-subtle:#1E293B;
+  --border-strong:#334155;
+  --font-display:'Inter',system-ui,-apple-system,sans-serif;
+  --font-body:'Inter',system-ui,-apple-system,sans-serif;
+  --font-mono:'JetBrains Mono','SF Mono',monospace;
+  --container:1280px;
+  --section-gap:140px;
+  --nav-height:64px;
+}
+body{background:var(--bg-primary);color:var(--text-primary);font-family:var(--font-body);line-height:1.6;overflow-x:hidden}
+a{color:inherit;text-decoration:none}
+img{max-width:100%;height:auto;display:block}
+.container{width:100%;max-width:var(--container);margin:0 auto;padding:0 24px}
+@media(min-width:768px){.container{padding:0 48px}}
+@media(min-width:1024px){.container{padding:0 64px}}
+
+/* Navigation */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;height:var(--nav-height);transition:background .3s ease,backdrop-filter .3s ease}
+nav.scrolled{background:rgba(11,15,25,.85);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid var(--border-subtle)}
+.nav-inner{display:flex;align-items:center;justify-content:space-between;height:100%;max-width:var(--container);margin:0 auto;padding:0 24px}
+@media(min-width:768px){.nav-inner{padding:0 48px}}
+@media(min-width:1024px){.nav-inner{padding:0 64px}}
+.nav-logo{display:flex;align-items:center;gap:10px;font-weight:600;font-size:18px;color:var(--text-primary)}
+.nav-logo svg{width:28px;height:28px}
+.nav-links{display:none;align-items:center;gap:32px}
+@media(min-width:768px){.nav-links{display:flex}}
+.nav-links a{font-size:14px;color:var(--text-secondary);transition:color .2s;font-weight:500}
+.nav-links a:hover{color:var(--text-primary)}
+.nav-cta{display:none}
+@media(min-width:768px){.nav-cta{display:inline-flex;align-items:center;padding:10px 24px;background:var(--accent-blue);color:#fff;border-radius:8px;font-size:14px;font-weight:600;transition:box-shadow .2s}}
+.nav-cta:hover{box-shadow:0 0 20px rgba(59,130,246,.3)}
+.mobile-toggle{display:flex;flex-direction:column;gap:5px;cursor:pointer;background:none;border:none;padding:4px;z-index:101}
+@media(min-width:768px){.mobile-toggle{display:none}}
+.mobile-toggle span{width:24px;height:2px;background:var(--text-primary);border-radius:2px;transition:transform .3s,opacity .3s}
+.mobile-toggle.active span:nth-child(1){transform:translateY(7px) rotate(45deg)}
+.mobile-toggle.active span:nth-child(2){opacity:0}
+.mobile-toggle.active span:nth-child(3){transform:translateY(-7px) rotate(-45deg)}
+.mobile-overlay{position:fixed;inset:0;background:rgba(11,15,25,.98);backdrop-filter:blur(20px);z-index:99;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:32px;opacity:0;pointer-events:none;transition:opacity .3s}
+.mobile-overlay.open{opacity:1;pointer-events:auto}
+.mobile-overlay a{font-size:24px;font-weight:600;color:var(--text-secondary);transition:color .2s}
+.mobile-overlay a:hover{color:var(--text-primary)}
+
+/* Section base */
+section{padding:var(--section-gap) 0;position:relative}
+.section-label{font-size:12px;font-weight:500;text-transform:uppercase;letter-spacing:.05em;margin-bottom:16px}
+.section-headline{font-weight:600;font-size:clamp(32px,5vw,48px);line-height:1.15;letter-spacing:-.02em;margin-bottom:20px;color:var(--text-primary)}
+.section-sub{font-size:18px;line-height:1.75;color:var(--text-secondary);max-width:640px}
+
+/* Reveal animations */
+.reveal{opacity:0;transform:translateY(40px);transition:opacity .6s cubic-bezier(.25,.1,.25,1),transform .6s cubic-bezier(.25,.1,.25,1)}
+.reveal.visible{opacity:1;transform:translateY(0)}
+.reveal-d1{transition-delay:.1s}
+.reveal-d2{transition-delay:.2s}
+.reveal-d3{transition-delay:.3s}
+.reveal-d4{transition-delay:.4s}
+.reveal-d5{transition-delay:.5s}
+
+/* Hero */
+.hero{min-height:100vh;display:flex;align-items:center;padding-top:var(--nav-height);position:relative;overflow:hidden}
+.hero-bg{position:absolute;inset:0;z-index:0}
+.hero-bg video,.hero-bg img{width:100%;height:100%;object-fit:cover}
+.hero-overlay{position:absolute;inset:0;background:linear-gradient(to bottom,rgba(11,15,25,.3),rgba(11,15,25,.95));z-index:1}
+.hero-particles{position:absolute;inset:0;z-index:1;overflow:hidden}
+.hero-dot{position:absolute;width:3px;height:3px;border-radius:50%;background:var(--accent-blue);opacity:0;animation:particleFloat linear infinite}
+@keyframes particleFloat{0%{transform:translateY(100vh) scale(0);opacity:0}10%{opacity:.4}90%{opacity:.4}100%{transform:translateY(-10vh) scale(1);opacity:0}}
+.hero-content{position:relative;z-index:2;max-width:720px}
+.hero-eyebrow{font-size:12px;font-weight:500;text-transform:uppercase;letter-spacing:.08em;color:var(--accent-amber);margin-bottom:24px}
+.hero-headline{font-family:var(--font-display);font-weight:700;font-size:clamp(40px,8vw,96px);line-height:1.05;letter-spacing:-.03em;margin-bottom:24px;color:var(--text-primary)}
+.hero-sub{font-size:clamp(16px,2vw,18px);line-height:1.75;color:var(--text-secondary);max-width:640px;margin-bottom:40px}
+.hero-ctas{display:flex;gap:16px;flex-wrap:wrap}
+.btn-primary{display:inline-flex;align-items:center;padding:16px 32px;background:var(--accent-blue);color:#fff;border-radius:8px;font-weight:600;font-size:16px;transition:box-shadow .2s,transform .2s;border:none;cursor:pointer}
+.btn-primary:hover{box-shadow:0 0 24px rgba(59,130,246,.35);transform:translateY(-1px)}
+.btn-secondary{display:inline-flex;align-items:center;padding:16px 32px;background:transparent;color:var(--text-primary);border-radius:8px;font-weight:600;font-size:16px;border:1px solid var(--border-strong);transition:border-color .2s,transform .2s;cursor:pointer}
+.btn-secondary:hover{border-color:var(--accent-blue);transform:translateY(-1px)}
+.hero-pipeline-viz{position:absolute;bottom:0;left:0;right:0;height:200px;z-index:2;opacity:0;transition:opacity 1s ease}
+.hero-pipeline-viz.visible{opacity:.6}
+@media(max-width:768px){.hero-pipeline-viz{display:none}}
+
+/* Mission */
+.mission-split{display:grid;grid-template-columns:1fr;gap:48px;align-items:center}
+@media(min-width:1024px){.mission-split{grid-template-columns:1fr 1fr}}
+.mission-image{position:relative;border-radius:16px;overflow:hidden;aspect-ratio:4/3;background:var(--bg-tertiary)}
+.mission-image img,.mission-image video{width:100%;height:100%;object-fit:cover}
+.mission-image-overlay{position:absolute;inset:0;background:linear-gradient(135deg,rgba(59,130,246,.1),transparent)}
+.mission-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:32px}
+.stat-card{background:var(--bg-secondary);border-radius:12px;padding:20px;border:1px solid var(--border-subtle);text-align:center}
+.stat-number{font-size:clamp(28px,3vw,36px);font-weight:700;color:var(--accent-blue);font-family:var(--font-display);letter-spacing:-.02em}
+.stat-label{font-size:12px;color:var(--text-secondary);margin-top:4px;font-weight:500;text-transform:uppercase;letter-spacing:.03em}
+
+/* Pipeline */
+.pipeline{background:var(--bg-primary);position:relative}
+.pipeline-grid-bg{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.02) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.02) 1px,transparent 1px);background-size:60px 60px;pointer-events:none;z-index:0}
+.pipeline-header{text-align:center;margin-bottom:64px;position:relative;z-index:1}
+.pipeline-stages{position:relative;z-index:1}
+.pipeline-line{position:absolute;left:24px;top:0;bottom:0;width:2px;background:var(--border-subtle)}
+@media(min-width:768px){.pipeline-line{left:40px}}
+.pipeline-line-fill{position:absolute;left:24px;top:0;width:2px;background:linear-gradient(to bottom,var(--accent-blue),var(--accent-emerald));height:0;transition:height .2s linear}
+@media(min-width:768px){.pipeline-line-fill{left:40px}}
+.pipeline-dot{position:absolute;left:20px;width:10px;height:10px;border-radius:50%;background:var(--accent-blue);border:2px solid var(--bg-primary);z-index:2;transition:opacity .3s}
+@media(min-width:768px){.pipeline-dot{left:36px}}
+.pipeline-flow-dot{position:absolute;left:23px;width:4px;height:4px;border-radius:50%;background:var(--accent-blue);z-index:3;opacity:.8;animation:flowDown 2s linear infinite}
+@media(min-width:768px){.pipeline-flow-dot{left:39px}}
+@keyframes flowDown{0%{transform:translateY(-10px);opacity:0}20%{opacity:1}80%{opacity:1}100%{transform:translateY(100%);opacity:0}}
+.stage-card{position:relative;padding-left:64px;padding-bottom:48px}
+@media(min-width:768px){.stage-card{padding-left:88px}}
+.stage-card:last-child{padding-bottom:0}
+.stage-card-inner{background:var(--bg-secondary);border-radius:16px;padding:28px;border:1px solid var(--border-subtle);transition:border-color .3s,transform .3s}
+.stage-card-inner:hover{border-color:var(--accent-blue);transform:translateY(-2px)}
+.stage-number{font-size:12px;font-weight:500;text-transform:uppercase;letter-spacing:.05em;color:var(--accent-blue);margin-bottom:8px}
+.stage-title{font-size:22px;font-weight:600;margin-bottom:8px}
+.stage-desc{font-size:15px;color:var(--text-secondary);line-height:1.7}
+.stage-artifact{display:inline-block;margin-top:12px;padding:4px 12px;background:rgba(59,130,246,.1);color:var(--accent-blue);border-radius:4px;font-family:var(--font-mono);font-size:12px}
+
+/* Gate */
+.gate{background:linear-gradient(to bottom,var(--bg-primary),#1E1B4B,var(--bg-primary));text-align:center;overflow:hidden}
+.gate-content{max-width:640px;margin:0 auto;position:relative;z-index:1}
+.gate-visual{margin:48px auto;position:relative;width:200px;height:200px}
+.gate-ring{transform:rotate(-90deg);width:200px;height:200px}
+.gate-ring-bg{fill:none;stroke:var(--bg-tertiary);stroke-width:8}
+.gate-ring-fill{fill:none;stroke:var(--accent-emerald);stroke-width:8;stroke-linecap:round;stroke-dasharray:565.48;stroke-dashoffset:565.48;transition:stroke-dashoffset 1.5s ease-out}
+.gate-ring-fill.animate{stroke-dashoffset:16.96}
+.gate-number{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
+.gate-number-inner{font-size:64px;font-weight:700;font-family:var(--font-display);color:var(--accent-emerald);letter-spacing:-.03em}
+.gate-number-sub{font-size:24px;font-weight:500;margin-left:4px;color:var(--accent-emerald)}
+.gate-body{margin-bottom:40px}
+.gate-states{display:flex;gap:16px;justify-content:center;flex-wrap:wrap}
+.gate-state{display:flex;align-items:center;gap:8px;padding:12px 20px;border-radius:8px;font-weight:500;font-size:14px;border:1px solid var(--border-subtle)}
+.gate-state.pass{color:var(--accent-emerald);border-color:rgba(16,185,129,.3);background:rgba(16,185,129,.08)}
+.gate-state.fail{color:var(--accent-rose);border-color:rgba(244,63,94,.3);background:rgba(244,63,94,.08);opacity:.5}
+
+/* Inference */
+.inference-diagram{margin-top:48px;background:var(--bg-secondary);border-radius:16px;padding:32px;border:1px solid var(--border-subtle)}
+.diagram-flow{display:flex;flex-direction:column;align-items:center;gap:0;position:relative}
+@media(min-width:768px){.diagram-flow{flex-direction:row;flex-wrap:wrap;justify-content:center}}
+.diagram-node{background:var(--bg-tertiary);border:1px solid var(--border-strong);border-radius:8px;padding:12px 20px;font-size:13px;font-weight:500;text-align:center;min-width:120px;transition:border-color .3s}
+.diagram-node:hover{border-color:var(--accent-blue)}
+.diagram-arrow{display:flex;align-items:center;justify-content:center;padding:4px 0;color:var(--accent-blue);font-size:18px}
+@media(min-width:768px){.diagram-arrow{padding:0 8px;transform:rotate(0deg)}}
+.diagram-arrow.reveal .arrow-path{stroke-dasharray:100;stroke-dashoffset:100;transition:stroke-dashoffset .6s ease;animation:arrowFlow 1.5s ease-out forwards}
+@keyframes arrowFlow{to{stroke-dashoffset:0}}
+.api-table{margin-top:32px;overflow-x:auto}
+.api-table table{width:100%;border-collapse:collapse;font-size:14px}
+.api-table td,.api-table th{padding:12px 16px;text-align:left;border-bottom:1px solid var(--border-subtle);font-family:var(--font-mono)}
+.api-table th{font-family:var(--font-body);font-weight:500;color:var(--text-secondary);font-size:12px;text-transform:uppercase;letter-spacing:.05em}
+.api-table td{color:var(--text-primary)}
+.api-table .method{color:var(--accent-emerald);font-weight:500}
+
+/* Observability */
+.observability-split{display:grid;grid-template-columns:1fr;gap:48px;align-items:center}
+@media(min-width:1024px){.observability-split{grid-template-columns:3fr 2fr}}
+.obs-dashboard{background:var(--bg-secondary);border-radius:16px;padding:24px;border:1px solid var(--border-subtle)}
+.obs-dashboard-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--border-subtle)}
+.obs-dashboard-title{font-size:13px;font-weight:500}
+.obs-dashboard-status{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--accent-emerald)}
+.obs-dashboard-status::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--accent-emerald);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.obs-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.obs-panel{background:var(--bg-tertiary);border-radius:8px;padding:16px;border:1px solid var(--border-subtle)}
+.obs-panel-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.obs-panel-name{font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--text-secondary);font-weight:500}
+.obs-panel-value{font-size:18px;font-weight:600;font-family:var(--font-display)}
+.obs-panel-chart{height:40px;display:flex;align-items:flex-end;gap:2px}
+.obs-bar{flex:1;background:var(--accent-blue);border-radius:1px;min-height:2px;transition:height .3s;animation:graphUpdate 2s ease infinite alternate}
+@keyframes graphUpdate{0%{opacity:.6}100%{opacity:1}}
+.obs-alerts{display:flex;flex-direction:column;gap:12px}
+.alert-card{background:var(--bg-secondary);border-radius:8px;padding:16px;border:1px solid var(--border-subtle);transition:border-color .3s}
+.alert-card:hover{border-color:var(--accent-amber)}
+.alert-name{font-family:var(--font-mono);font-size:12px;color:var(--accent-amber);margin-bottom:4px}
+.alert-desc{font-size:13px;color:var(--text-secondary)}
+.alert-catch{font-size:11px;color:var(--text-secondary);margin-top:4px;opacity:.7}
+
+/* Testing */
+.testing-pyramid{margin-top:48px;display:flex;flex-direction:column;align-items:center;gap:2px;max-width:600px;margin-left:auto;margin-right:auto}
+.pyramid-layer{width:100%;padding:20px 24px;border-radius:8px;text-align:center;transition:transform .3s;transform-origin:center}
+.pyramid-layer:hover{transform:scale(1.02)}
+.pyramid-layer:nth-child(1){background:rgba(59,130,246,.15);border:1px solid rgba(59,130,246,.3);max-width:100%}
+.pyramid-layer:nth-child(2){background:rgba(6,182,212,.15);border:1px solid rgba(6,182,212,.3);max-width:85%}
+.pyramid-layer:nth-child(3){background:rgba(20,184,166,.15);border:1px solid rgba(20,184,166,.3);max-width:70%}
+.pyramid-layer:nth-child(4){background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.3);max-width:55%}
+.pyramid-layer:nth-child(5){background:rgba(16,185,129,.15);border:1px solid rgba(16,185,129,.3);max-width:40%}
+.pyramid-layer-label{font-weight:600;font-size:16px;margin-bottom:2px}
+.pyramid-layer-desc{font-size:13px;color:var(--text-secondary)}
+.coverage-badge{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:40px;padding:20px 32px;background:var(--bg-secondary);border-radius:12px;border:1px solid var(--border-subtle)}
+.coverage-number{font-size:48px;font-weight:700;font-family:var(--font-display);color:var(--accent-emerald);letter-spacing:-.03em}
+.coverage-meta{text-align:left}
+.coverage-meta-label{font-size:14px;font-weight:500}
+.coverage-meta-code{font-family:var(--font-mono);font-size:12px;color:var(--text-secondary);margin-top:2px}
+
+/* Deployment */
+.deployment-grid{display:grid;grid-template-columns:1fr;gap:24px;margin-top:48px}
+@media(min-width:768px){.deployment-grid{grid-template-columns:repeat(3,1fr)}}
+.machine-card{background:var(--bg-secondary);border-radius:16px;padding:28px;border:1px solid var(--border-subtle);transition:border-color .3s,transform .3s}
+.machine-card:hover{border-color:var(--accent-blue);transform:translateY(-2px)}
+.machine-icon{width:40px;height:40px;border-radius:10px;background:rgba(59,130,246,.1);display:flex;align-items:center;justify-content:center;margin-bottom:16px;font-size:20px}
+.machine-name{font-size:18px;font-weight:600;margin-bottom:4px}
+.machine-tag{font-size:12px;color:var(--accent-blue);margin-bottom:12px;font-weight:500}
+.machine-bullets{list-style:none}
+.machine-bullets li{padding:4px 0;font-size:14px;color:var(--text-secondary);padding-left:16px;position:relative}
+.machine-bullets li::before{content:'›';position:absolute;left:0;color:var(--accent-blue);font-weight:700}
+.machine-command{margin-top:16px;padding:10px 14px;background:#0D1117;border-radius:6px;font-family:var(--font-mono);font-size:12px;color:var(--text-secondary);overflow-x:auto}
+.k8s-section{margin-top:32px;padding:28px;background:var(--bg-secondary);border-radius:16px;border:1px solid var(--border-subtle);text-align:center}
+.k8s-title{font-size:18px;font-weight:600;margin-bottom:8px}
+.k8s-desc{font-size:14px;color:var(--text-secondary);margin-bottom:16px}
+
+/* CTA/Get Started */
+.cta{text-align:center;background:linear-gradient(to bottom,var(--bg-primary),#1E3A5F,var(--bg-primary));position:relative}
+.cta::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at center bottom,rgba(59,130,246,.08),transparent 70%);pointer-events:none}
+.cta-content{position:relative;z-index:1;max-width:640px;margin:0 auto}
+.cta-headline{font-weight:700;font-size:clamp(36px,6vw,64px);line-height:1.1;letter-spacing:-.03em;margin-bottom:20px}
+.cta-sub{font-size:18px;color:var(--text-secondary);margin-bottom:32px}
+.cta-command{background:#0D1117;border:1px solid var(--border-subtle);border-radius:12px;padding:20px 24px;margin-bottom:32px;text-align:left;position:relative}
+.cta-command code{font-family:var(--font-mono);font-size:14px;color:var(--text-primary);line-height:1.8}
+.cta-command .cmd-line::before{content:'$ ';color:var(--accent-emerald)}
+.cta-command .comment{color:var(--text-secondary);opacity:.6}
+.cta-command .cursor{display:inline-block;width:8px;height:16px;background:var(--accent-blue);animation:blink 1s step-end infinite;vertical-align:text-bottom;margin-left:2px}
+@keyframes blink{50%{opacity:0}}
+.cta-links{display:flex;gap:16px;justify-content:center;flex-wrap:wrap}
+
+/* Footer */
+footer{padding:48px 0 24px;border-top:1px solid var(--border-subtle)}
+.footer-grid{display:grid;grid-template-columns:1fr;gap:32px}
+@media(min-width:768px){.footer-grid{grid-template-columns:repeat(4,1fr)}}
+.footer-col h4{font-size:13px;font-weight:500;text-transform:uppercase;letter-spacing:.05em;color:var(--text-secondary);margin-bottom:16px}
+.footer-col a{display:block;font-size:14px;color:var(--text-secondary);padding:4px 0;transition:color .2s}
+.footer-col a:hover{color:var(--text-primary)}
+.footer-bottom{margin-top:32px;padding-top:24px;border-top:1px solid var(--border-subtle);display:flex;flex-direction:column;gap:12px;align-items:center;justify-content:space-between}
+@media(min-width:768px){.footer-bottom{flex-direction:row}}
+.footer-copy{font-size:13px;color:var(--text-secondary)}
+.footer-socials{display:flex;gap:16px}
+.footer-socials a{width:36px;height:36px;border-radius:50%;background:var(--bg-secondary);display:flex;align-items:center;justify-content:center;color:var(--text-secondary);transition:background .2s,color .2s;font-size:16px}
+.footer-socials a:hover{background:var(--accent-blue);color:#fff}
+
+/* Responsive */
+@media(max-width:640px){
+  .hero-headline{font-size:36px}
+  .section-headline{font-size:28px}
+  .mission-stats{grid-template-columns:1fr}
+  .obs-grid{grid-template-columns:1fr}
+  .stat-number{font-size:24px}
+  .stage-card{padding-left:0}
+  .pipeline-line,.pipeline-line-fill,.pipeline-dot,.pipeline-flow-dot{display:none}
+}
+
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+  .reveal{opacity:1;transform:none}
+  .gate-ring-fill{stroke-dashoffset:16.96!important}
+  .hero-dot,.pipeline-flow-dot{display:none}
+}
+
+/* Section dividers */
+.section-divider{height:1px;background:linear-gradient(to right,transparent,var(--border-subtle),transparent);max-width:var(--container);margin:0 auto}
+</style>
+</head>
+<body>
+
+<!-- Navigation -->
+<nav id="navbar">
+  <div class="nav-inner">
+    <a href="#" class="nav-logo">
+      <svg viewBox="0 0 28 28" fill="none">
+        <circle cx="14" cy="14" r="12" stroke="currentColor" stroke-width="1.5" opacity=".3"/>
+        <circle cx="14" cy="10" r="5" stroke="currentColor" stroke-width="1.5"/>
+        <path d="M14 15v8M10 19h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        <circle cx="14" cy="10" r="2" fill="currentColor"/>
+      </svg>
+      RescueVision
+    </a>
+    <div class="nav-links">
+      <a href="#pipeline">Pipeline</a>
+      <a href="#inference">Inference</a>
+      <a href="#observability">Observability</a>
+      <a href="#testing">Quality</a>
+      <a href="#deployment">Deploy</a>
+    </div>
+    <a href="#get-started" class="nav-cta">Get Started</a>
+    <button class="mobile-toggle" id="mobileToggle" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</nav>
+<div class="mobile-overlay" id="mobileOverlay">
+  <a href="#pipeline" class="mobile-link">Pipeline</a>
+  <a href="#inference" class="mobile-link">Inference</a>
+  <a href="#observability" class="mobile-link">Observability</a>
+  <a href="#testing" class="mobile-link">Quality</a>
+  <a href="#deployment" class="mobile-link">Deploy</a>
+  <a href="#get-started" class="mobile-link" style="color:var(--accent-blue)">Get Started</a>
+</div>
+
+<!-- Hero -->
+<section class="hero" id="hero">
+  <div class="hero-bg">
+    <div style="width:100%;height:100%;background:linear-gradient(135deg,#0B0F19 0%,#1E293B 50%,#0F172A 100%)"></div>
+  </div>
+  <div class="hero-overlay"></div>
+  <div class="hero-particles" id="particles"></div>
+  <div class="container hero-content">
+    <p class="hero-eyebrow reveal visible">End-to-End MLOps for Search & Rescue</p>
+    <h1 class="hero-headline reveal visible" style="transition-delay:.1s">From drone feed<br>to inference graph</h1>
+    <p class="hero-sub reveal visible" style="transition-delay:.2s">A production-grade ML pipeline that trains, quantizes, benchmarks, and serves YOLOv8n models for real-time victim detection from drone footage.</p>
+    <div class="hero-ctas reveal visible" style="transition-delay:.3s">
+      <a href="#get-started" class="btn-primary">Get Started</a>
+      <a href="#pipeline" class="btn-secondary">View Pipeline</a>
+    </div>
+  </div>
+  <div class="hero-pipeline-viz" id="heroViz">
+    <svg width="100%" height="200" viewBox="0 0 1280 200" preserveAspectRatio="xMidYMax meet" style="position:absolute;bottom:0">
+      <defs>
+        <linearGradient id="heroFlow" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="var(--accent-blue)" stop-opacity="0"/>
+          <stop offset="50%" stop-color="var(--accent-blue)" stop-opacity=".4"/>
+          <stop offset="100%" stop-color="var(--accent-blue)" stop-opacity="0"/>
+        </linearGradient>
+      </defs>
+      <circle cx="80" cy="120" r="24" fill="none" stroke="#1E293B" stroke-width="2"/>
+      <circle cx="80" cy="120" r="8" fill="var(--accent-blue)" opacity=".6"/>
+      <circle cx="380" cy="120" r="24" fill="none" stroke="#1E293B" stroke-width="2"/>
+      <circle cx="380" cy="120" r="8" fill="var(--accent-blue)" opacity=".6"/>
+      <circle cx="640" cy="120" r="24" fill="none" stroke="#1E293B" stroke-width="2"/>
+      <circle cx="640" cy="120" r="8" fill="var(--accent-blue)" opacity=".6"/>
+      <circle cx="900" cy="120" r="24" fill="none" stroke="#1E293B" stroke-width="2"/>
+      <circle cx="900" cy="120" r="8" fill="var(--accent-blue)" opacity=".6"/>
+      <circle cx="1160" cy="120" r="24" fill="none" stroke="#1E293B" stroke-width="2"/>
+      <circle cx="1160" cy="120" r="8" fill="var(--accent-emerald)" opacity=".6"/>
+      <circle cx="1240" cy="120" r="8" fill="var(--accent-emerald)" opacity=".4"/>
+      <line x1="104" y1="120" x2="356" y2="120" stroke="var(--border-subtle)" stroke-width="1"/>
+      <line x1="404" y1="120" x2="616" y2="120" stroke="var(--border-subtle)" stroke-width="1"/>
+      <line x1="664" y1="120" x2="876" y2="120" stroke="var(--border-subtle)" stroke-width="1"/>
+      <line x1="924" y1="120" x2="1136" y2="120" stroke="var(--border-subtle)" stroke-width="1"/>
+      <circle r="3" fill="var(--accent-blue)" opacity=".8">
+        <animateMotion dur="4s" repeatCount="indefinite" path="M104,120 L356,120"/>
+      </circle>
+      <circle r="3" fill="var(--accent-blue)" opacity=".8">
+        <animateMotion dur="4s" repeatCount="indefinite" path="M404,120 L616,120" begin=".5s"/>
+      </circle>
+      <circle r="3" fill="var(--accent-blue)" opacity=".8">
+        <animateMotion dur="4s" repeatCount="indefinite" path="M664,120 L876,120" begin="1s"/>
+      </circle>
+      <circle r="3" fill="var(--accent-blue)" opacity=".8">
+        <animateMotion dur="4s" repeatCount="indefinite" path="M924,120 L1136,120" begin="1.5s"/>
+      </circle>
+      <text x="80" y="170" text-anchor="middle" fill="#94A3B8" font-size="11" font-family="Inter,sans-serif">Data</text>
+      <text x="380" y="170" text-anchor="middle" fill="#94A3B8" font-size="11" font-family="Inter,sans-serif">Train</text>
+      <text x="640" y="170" text-anchor="middle" fill="#94A3B8" font-size="11" font-family="Inter,sans-serif">Export</text>
+      <text x="900" y="170" text-anchor="middle" fill="#94A3B8" font-size="11" font-family="Inter,sans-serif">Benchmark</text>
+      <text x="1160" y="170" text-anchor="middle" fill="#94A3B8" font-size="11" font-family="Inter,sans-serif">Register</text>
+    </svg>
+  </div>
+</section>
+
+<!-- Mission -->
+<section id="mission">
+  <div class="container">
+    <div class="mission-split">
+      <div class="mission-image reveal">
+        <div style="width:100%;height:100%;background:linear-gradient(135deg,#1E293B,#0F172A);display:flex;align-items:center;justify-content:center;font-size:48px;color:var(--text-secondary);opacity:.2">
+          <svg width="120" height="120" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" opacity=".5">
+            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+          </svg>
+        </div>
+        <div class="mission-image-overlay"></div>
+      </div>
+      <div>
+        <p class="section-label reveal" style="color:var(--accent-amber)">THE MISSION</p>
+        <h2 class="section-headline reveal reveal-d1">Built for teams who don't ship notebooks.</h2>
+        <p class="section-sub reveal reveal-d2">RescueVision is a repeatable, auditable, observable ML pipeline. It trains a YOLOv8n model, quantizes it for edge deployment, benchmarks it against quality gates, registers it in a model registry, and serves it behind a hardened FastAPI inference server with full observability.</p>
+        <div class="mission-stats reveal reveal-d3">
+          <div class="stat-card">
+            <div class="stat-number" data-count="5">0</div>
+            <div class="stat-label">Pipeline Stages</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-number" data-count="3">0</div>
+            <div class="stat-label">Model Formats</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-number" data-count="200" data-suffix="ms">0</div>
+            <div class="stat-label">p99 Inference</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- Pipeline -->
+<section id="pipeline" class="pipeline">
+  <div class="pipeline-grid-bg"></div>
+  <div class="container">
+    <div class="pipeline-header">
+      <p class="section-label reveal" style="color:var(--accent-blue)">THE PIPELINE</p>
+      <h2 class="section-headline reveal reveal-d1">5 stages. One deterministic DAG.</h2>
+      <p class="section-sub reveal reveal-d2" style="margin:0 auto">Each stage is cacheable, reproducible, and tracked. Change one input, DVC knows exactly what to rebuild.</p>
+    </div>
+    <div class="pipeline-stages">
+      <div class="pipeline-line"></div>
+      <div class="pipeline-line-fill" id="pipelineFill"></div>
+
+      <div class="stage-card reveal">
+        <div class="pipeline-dot" style="background:var(--accent-amber)"></div>
+        <div class="pipeline-flow-dot" style="background:var(--accent-amber);animation-delay:0s"></div>
+        <div class="stage-card-inner">
+          <div class="stage-number">Stage 1</div>
+          <div class="stage-title">Data — Ingest & Validate</div>
+          <div class="stage-desc">Pulls versioned COCO person subset from DagsHub via DVC. Validates structure, image/label count parity, YOLO label format, and 10 random image corruption checks. Debug mode generates synthetic data — no DVC pull needed.</div>
+          <div class="stage-artifact">dataset_hash.txt</div>
+        </div>
+      </div>
+
+      <div class="stage-card reveal">
+        <div class="pipeline-dot" style="background:var(--accent-blue)"></div>
+        <div class="pipeline-flow-dot" style="background:var(--accent-blue);animation-delay:.5s"></div>
+        <div class="stage-card-inner">
+          <div class="stage-number">Stage 2</div>
+          <div class="stage-title">Train — YOLOv8n Training</div>
+          <div class="stage-desc">Device-adaptive training via Ultralytics API — CUDA (RTX 4060), MPS (Mac Mini M4), or CPU fallback. Every hyperparameter and metric logged to MLflow on DagsHub.</div>
+          <div class="stage-artifact">best.pt → MLflow artifacts</div>
+        </div>
+      </div>
+
+      <div class="stage-card reveal">
+        <div class="pipeline-dot" style="background:var(--accent-blue)"></div>
+        <div class="pipeline-flow-dot" style="background:var(--accent-blue);animation-delay:1s"></div>
+        <div class="stage-card-inner">
+          <div class="stage-number">Stage 3</div>
+          <div class="stage-title">Export — Quantize & Convert</div>
+          <div class="stage-desc">Converts best.pt into three edge-optimized formats: ONNX FP32 (~12 MB), ONNX INT8 (~3.2 MB) via dynamic quantization, and TFLite INT8 (~3 MB). TFLite skipped gracefully if TensorFlow is absent.</div>
+          <div class="stage-artifact">model.onnx · model_int8.onnx · model.tflite</div>
+        </div>
+      </div>
+
+      <div class="stage-card reveal">
+        <div class="pipeline-dot" style="background:var(--accent-blue)"></div>
+        <div class="pipeline-flow-dot" style="background:var(--accent-blue);animation-delay:1.5s"></div>
+        <div class="stage-card-inner">
+          <div class="stage-number">Stage 4</div>
+          <div class="stage-title">Benchmark — Measure & Validate</div>
+          <div class="stage-desc">Runs ONNX Runtime inference on 100 validation images per format. Measures mean/p95 latency, model size, and actual mAP50 via YOLO validation backend. Writes structured report consumed by Stage 5.</div>
+          <div class="stage-artifact">benchmark_report.json</div>
+        </div>
+      </div>
+
+      <div class="stage-card reveal">
+        <div class="pipeline-dot" style="background:var(--accent-emerald)"></div>
+        <div class="pipeline-flow-dot" style="background:var(--accent-emerald);animation-delay:2s"></div>
+        <div class="stage-card-inner">
+          <div class="stage-number" style="color:var(--accent-emerald)">Stage 5</div>
+          <div class="stage-title">Register — Quality Gate & Registry</div>
+          <div class="stage-desc">mAP50(INT8) &ge; mAP50(FP32) &times; 0.97. If gap exceeds 3%, the pipeline fails — no exceptions, no manual override. On pass: all 3 formats registered to MLflow Model Registry with git_commit, dataset_hash, and pipeline tags.</div>
+          <div class="stage-artifact">MLflow Model Registry</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- Quality Gate -->
+<section id="gate" class="gate">
+  <div class="container">
+    <div class="gate-content">
+      <p class="section-label reveal" style="color:var(--accent-emerald)">QUALITY GATE</p>
+      <h2 class="section-headline reveal reveal-d1">We don't ship degraded models.</h2>
+      <p class="gate-body section-sub reveal reveal-d2" style="margin:0 auto">If INT8 quantization drops accuracy more than 3%, the pipeline fails. No exceptions. No manual override. The model never reaches production.</p>
+      <div class="gate-visual reveal reveal-d3">
+        <svg class="gate-ring" viewBox="0 0 200 200">
+          <circle class="gate-ring-bg" cx="100" cy="100" r="90"/>
+          <circle class="gate-ring-fill" id="gateRing" cx="100" cy="100" r="90"/>
+        </svg>
+        <div class="gate-number">
+          <span class="gate-number-inner" id="gateNumber">97</span>
+          <span class="gate-number-sub">%</span>
+        </div>
+      </div>
+      <div class="gate-states reveal reveal-d4">
+        <div class="gate-state pass">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          PASS — mAP50(INT8) &ge; 97% of FP32
+        </div>
+        <div class="gate-state fail">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          FAIL — Pipeline exits 1. Telegram alert sent.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- Inference -->
+<section id="inference">
+  <div class="container">
+    <p class="section-label reveal" style="color:var(--accent-blue)">INFERENCE SERVER</p>
+    <h2 class="section-headline reveal reveal-d1">Hardened FastAPI. ONNX Runtime. &lt;200ms p99.</h2>
+    <p class="section-sub reveal reveal-d2">Layered architecture with strict dependency inversion. Every layer independently testable. One worker — ONNX sessions are not fork-safe.</p>
+
+    <div class="inference-diagram reveal reveal-d3">
+      <div class="diagram-flow">
+        <div class="diagram-node">Image Bytes</div>
+        <div class="diagram-arrow">&rarr;</div>
+        <div class="diagram-node">ImagePreprocessor</div>
+        <div class="diagram-arrow">&rarr;</div>
+        <div class="diagram-node">ONNXRunner</div>
+        <div class="diagram-arrow">&rarr;</div>
+        <div class="diagram-node">Postprocessor</div>
+        <div class="diagram-arrow">&rarr;</div>
+        <div class="diagram-node">PredictionLogger</div>
+        <div class="diagram-arrow">&rarr;</div>
+        <div class="diagram-node">MetricsRecorder</div>
+        <div class="diagram-arrow">&rarr;</div>
+        <div class="diagram-node" style="border-color:var(--accent-emerald)">Response</div>
+      </div>
+    </div>
+
+    <div class="api-table reveal reveal-d4">
+      <table>
+        <thead>
+          <tr><th>Endpoint</th><th>Method</th><th>Purpose</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>/predict</td><td class="method">POST</td><td>Upload image &rarr; receive detections (class, confidence, bbox)</td></tr>
+          <tr><td>/health</td><td class="method">GET</td><td>Liveness probe — always 200 if process alive</td></tr>
+          <tr><td>/ready</td><td class="method">GET</td><td>Readiness probe — 200 only after model loaded</td></tr>
+          <tr><td>/model/info</td><td class="method">GET</td><td>Full model metadata (name, version, format, input shape)</td></tr>
+          <tr><td>/metrics</td><td class="method">GET</td><td>Prometheus scrape target</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div style="margin-top:24px;display:flex;gap:12px;flex-wrap:wrap" class="reveal reveal-d4">
+      <span style="padding:6px 14px;background:rgba(244,63,94,.1);color:var(--accent-rose);border-radius:6px;font-size:12px;font-weight:500;border:1px solid rgba(244,63,94,.2)">Rate Limiting — 10 req/min per IP</span>
+      <span style="padding:6px 14px;background:rgba(59,130,246,.1);color:var(--accent-blue);border-radius:6px;font-size:12px;font-weight:500;border:1px solid rgba(59,130,246,.2)">API Key Authentication</span>
+      <span style="padding:6px 14px;background:rgba(245,158,11,.1);color:var(--accent-amber);border-radius:6px;font-size:12px;font-weight:500;border:1px solid rgba(245,158,11,.2)">10 MB Content-Limit</span>
+      <span style="padding:6px 14px;background:rgba(16,185,129,.1);color:var(--accent-emerald);border-radius:6px;font-size:12px;font-weight:500;border:1px solid rgba(16,185,129,.2)">MIME Validation</span>
+    </div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- Observability -->
+<section id="observability">
+  <div class="container">
+    <div class="observability-split">
+      <div>
+        <p class="section-label reveal" style="color:var(--accent-blue)">OBSERVABILITY</p>
+        <h2 class="section-headline reveal reveal-d1">Prometheus + Grafana. Five alert rules. Zero blind spots.</h2>
+        <p class="section-sub reveal reveal-d2">From inference latency to detection rate drop — we catch model drift before it catches you.</p>
+
+        <div class="reveal reveal-d3" style="margin-top:32px">
+          <p style="font-size:13px;font-weight:500;color:var(--text-secondary);margin-bottom:16px;text-transform:uppercase;letter-spacing:.03em">Metrics Instrumented</p>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px">
+            <div style="font-family:var(--font-mono);color:var(--text-secondary)">rescuevision_requests_total</div>
+            <div style="font-family:var(--font-mono);color:var(--text-secondary)">rescuevision_request_duration_seconds</div>
+            <div style="font-family:var(--font-mono);color:var(--text-secondary)">rescuevision_inference_latency_seconds</div>
+            <div style="font-family:var(--font-mono);color:var(--text-secondary)">rescuevision_detections_per_request</div>
+            <div style="font-family:var(--font-mono);color:var(--text-secondary)">rescuevision_model_info</div>
+            <div style="font-family:var(--font-mono);color:var(--text-secondary)">rescuevision_startup_timestamp</div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="obs-dashboard reveal reveal-d2">
+          <div class="obs-dashboard-header">
+            <span class="obs-dashboard-title">RescueVision — Inference Observability</span>
+            <span class="obs-dashboard-status">LIVE</span>
+          </div>
+          <div class="obs-grid">
+            <div class="obs-panel">
+              <div class="obs-panel-header">
+                <span class="obs-panel-name">Request Rate</span>
+                <span class="obs-panel-value" style="color:var(--accent-blue)">12.4</span>
+              </div>
+              <div class="obs-panel-chart">
+                <div class="obs-bar" style="height:20%"></div>
+                <div class="obs-bar" style="height:45%"></div>
+                <div class="obs-bar" style="height:60%"></div>
+                <div class="obs-bar" style="height:35%"></div>
+                <div class="obs-bar" style="height:80%"></div>
+                <div class="obs-bar" style="height:55%"></div>
+                <div class="obs-bar" style="height:90%"></div>
+                <div class="obs-bar" style="height:70%"></div>
+                <div class="obs-bar" style="height:100%"></div>
+                <div class="obs-bar" style="height:65%"></div>
+              </div>
+            </div>
+            <div class="obs-panel">
+              <div class="obs-panel-header">
+                <span class="obs-panel-name">Error Rate</span>
+                <span class="obs-panel-value" style="color:var(--accent-emerald)">0.3</span>
+              </div>
+              <div class="obs-panel-chart">
+                <div class="obs-bar" style="height:5%;background:var(--accent-emerald)"></div>
+                <div class="obs-bar" style="height:8%;background:var(--accent-emerald)"></div>
+                <div class="obs-bar" style="height:3%;background:var(--accent-emerald)"></div>
+                <div class="obs-bar" style="height:6%;background:var(--accent-emerald)"></div>
+                <div class="obs-bar" style="height:2%;background:var(--accent-emerald)"></div>
+                <div class="obs-bar" style="height:7%;background:var(--accent-emerald)"></div>
+                <div class="obs-bar" style="height:4%;background:var(--accent-emerald)"></div>
+                <div class="obs-bar" style="height:10%;background:var(--accent-emerald)"></div>
+                <div class="obs-bar" style="height:5%;background:var(--accent-emerald)"></div>
+                <div class="obs-bar" style="height:3%;background:var(--accent-emerald)"></div>
+              </div>
+            </div>
+            <div class="obs-panel" style="grid-column:1/-1">
+              <div class="obs-panel-header">
+                <span class="obs-panel-name">p95 Latency</span>
+                <span class="obs-panel-value" style="color:var(--accent-amber)">142ms</span>
+              </div>
+              <div class="obs-panel-chart" style="height:30px">
+                <div class="obs-bar" style="height:40%"></div>
+                <div class="obs-bar" style="height:60%"></div>
+                <div class="obs-bar" style="height:55%"></div>
+                <div class="obs-bar" style="height:75%"></div>
+                <div class="obs-bar" style="height:90%"></div>
+                <div class="obs-bar" style="height:70%"></div>
+                <div class="obs-bar" style="height:85%"></div>
+                <div class="obs-bar" style="height:65%"></div>
+                <div class="obs-bar" style="height:95%"></div>
+                <div class="obs-bar" style="height:78%"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top:16px" class="reveal reveal-d4">
+          <p style="font-size:12px;font-weight:500;color:var(--text-secondary);margin-bottom:12px;text-transform:uppercase;letter-spacing:.03em">Alert Rules</p>
+          <div class="obs-alerts">
+            <div class="alert-card"><div class="alert-name">InferenceLatencyP95High</div><div class="alert-desc">p95 &gt; 150ms for 2m</div><div class="alert-catch">Model degradation or resource pressure</div></div>
+            <div class="alert-card"><div class="alert-name">RequestLatencyP95High</div><div class="alert-desc">p95 &gt; 500ms for 2m</div><div class="alert-catch">Network or preprocessing bottleneck</div></div>
+            <div class="alert-card"><div class="alert-name">HighErrorRate</div><div class="alert-desc">5xx rate &gt; 5%</div><div class="alert-catch">Serving failures</div></div>
+            <div class="alert-card"><div class="alert-name">NoIncomingTraffic</div><div class="alert-desc">0 requests for 5m</div><div class="alert-catch">Downstream pipeline or routing issue</div></div>
+            <div class="alert-card"><div class="alert-name">DetectionRateDrop</div><div class="alert-desc">Avg detections/request &darr; &gt;70% vs yesterday</div><div class="alert-catch">Model drift proxy — no ground truth needed</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- Testing -->
+<section id="testing">
+  <div class="container">
+    <p class="section-label reveal" style="color:var(--accent-emerald)">TESTING</p>
+    <h2 class="section-headline reveal reveal-d1">5 levels. 70% floor. No surprises in production.</h2>
+    <p class="section-sub reveal reveal-d2">From pure-logic unit tests to Locust load tests with SLO pass criteria — every layer independently verifiable.</p>
+
+    <div class="testing-pyramid reveal reveal-d3">
+      <div class="pyramid-layer"><div class="pyramid-layer-label" style="color:#60A5FA">Unit</div><div class="pyramid-layer-desc">11+ cases per component — preprocessor, postprocessor, metric gate, label validation</div></div>
+      <div class="pyramid-layer"><div class="pyramid-layer-label" style="color:#22D3EE">API</div><div class="pyramid-layer-desc">Health, predict, security — FastAPI TestClient + mock ONNXRunner</div></div>
+      <div class="pyramid-layer"><div class="pyramid-layer-label" style="color:#14B8A6">Pipeline</div><div class="pyramid-layer-desc">Data integrity, training checkpoint, export artifacts, benchmark schema</div></div>
+      <div class="pyramid-layer"><div class="pyramid-layer-label" style="color:#22C55E">Smoke</div><div class="pyramid-layer-desc">9 curl-based endpoint checks against running server</div></div>
+      <div class="pyramid-layer"><div class="pyramid-layer-label" style="color:#10B981">Load</div><div class="pyramid-layer-desc">50 users, 60s — SLO: p95 &lt; 200ms, error rate &lt; 1%</div></div>
+    </div>
+
+    <div class="coverage-badge reveal reveal-d4">
+      <div class="coverage-number">70%</div>
+      <div class="coverage-meta">
+        <div class="coverage-meta-label">Coverage Floor</div>
+        <div class="coverage-meta-code">fail_under = 70</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- Deployment -->
+<section id="deployment">
+  <div class="container">
+    <p class="section-label reveal" style="color:var(--accent-blue)">DEPLOYMENT</p>
+    <h2 class="section-headline reveal reveal-d1">Laptop. Mac Mini. RTX 4060. Your choice.</h2>
+    <p class="section-sub reveal reveal-d2">Full pipeline runs on 3 machine profiles with device-adaptive training. Debug mode with synthetic data means no GPU required for development.</p>
+
+    <div class="deployment-grid">
+      <div class="machine-card reveal">
+        <div class="machine-icon">💻</div>
+        <div class="machine-name">Laptop</div>
+        <div class="machine-tag">CPU Fallback</div>
+        <ul class="machine-bullets">
+          <li>Full pipeline on CPU</li>
+          <li>Debug mode with synthetic data</li>
+          <li>No GPU required</li>
+          <li>Subset mode for resource constraints</li>
+        </ul>
+        <div class="machine-command"><span style="color:var(--accent-emerald)">$</span> make install-dev</div>
+      </div>
+      <div class="machine-card reveal reveal-d1">
+        <div class="machine-icon">🖥️</div>
+        <div class="machine-name">Mac Mini M4</div>
+        <div class="machine-tag">MPS Acceleration</div>
+        <ul class="machine-bullets">
+          <li>Apple Silicon optimized</li>
+          <li>Training and inference on MPS</li>
+          <li>Full pipeline support</li>
+          <li>docker compose up ready</li>
+        </ul>
+        <div class="machine-command"><span style="color:var(--accent-emerald)">$</span> make install-train</div>
+      </div>
+      <div class="machine-card reveal reveal-d2">
+        <div class="machine-icon">⚡</div>
+        <div class="machine-name">RTX 4060 Lab</div>
+        <div class="machine-tag">CUDA Power</div>
+        <ul class="machine-bullets">
+          <li>Full CUDA acceleration</li>
+          <li>Fastest training cycles</li>
+          <li>Lowest inference latency</li>
+          <li>Production-grade benchmarks</li>
+        </ul>
+        <div class="machine-command"><span style="color:var(--accent-emerald)">$</span> make install-train-cuda</div>
+      </div>
+    </div>
+
+    <div class="k8s-section reveal reveal-d3">
+      <div class="k8s-title">Ready for Kubernetes</div>
+      <div class="k8s-desc">Horizontal Pod Autoscaler, ClusterIP Service, and deployment manifests included. From Docker Compose to production K8s cluster in minutes.</div>
+      <a href="#get-started" class="btn-secondary" style="display:inline-flex">View K8s Config</a>
+    </div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- CTA -->
+<section id="get-started" class="cta">
+  <div class="container">
+    <div class="cta-content">
+      <h2 class="cta-headline reveal">Ship pipelines, not notebooks.</h2>
+      <p class="cta-sub reveal reveal-d1">From <span style="font-family:var(--font-mono);color:var(--accent-blue)">docker compose up</span> to production inference in minutes. Full observability included.</p>
+      <div class="cta-command reveal reveal-d2">
+        <code>
+          <div class="comment"># Clone, install, deploy</div>
+          <div class="cmd-line">git clone https://github.com/your-org/rescuevision.git</div>
+          <div><span style="color:var(--text-secondary)">  </span>cd rescuevision</div>
+          <div class="cmd-line">docker compose up<span class="cursor"></span></div>
+        </code>
+      </div>
+      <div class="cta-links reveal reveal-d3">
+        <a href="#" class="btn-primary">Get Started</a>
+        <a href="#" class="btn-secondary">Read the Docs</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer>
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-col">
+        <h4>Product</h4>
+        <a href="#pipeline">Pipeline</a>
+        <a href="#inference">Inference</a>
+        <a href="#observability">Observability</a>
+        <a href="#deployment">Deployment</a>
+        <a href="#testing">Quality</a>
+      </div>
+      <div class="footer-col">
+        <h4>Resources</h4>
+        <a href="#">Documentation</a>
+        <a href="#">API Reference</a>
+        <a href="#">Blog</a>
+        <a href="#">GitHub</a>
+      </div>
+      <div class="footer-col">
+        <h4>Company</h4>
+        <a href="#">About</a>
+        <a href="#">Careers</a>
+        <a href="#">Contact</a>
+      </div>
+      <div class="footer-col">
+        <h4>Legal</h4>
+        <a href="#">Privacy</a>
+        <a href="#">Terms</a>
+        <a href="#">License</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <div class="footer-copy">&copy; 2026 RescueVision. Built for search-and-rescue teams.</div>
+      <div class="footer-socials">
+        <a href="#" aria-label="GitHub">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+        </a>
+        <a href="#" aria-label="Twitter">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+        </a>
+        <a href="#" aria-label="LinkedIn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+        </a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script>
+// Nav scroll
+const nav = document.getElementById('navbar');
+let lastScroll = 0;
+window.addEventListener('scroll', () => {
+  const y = window.scrollY;
+  if (y > 60) nav.classList.add('scrolled');
+  else nav.classList.remove('scrolled');
+  lastScroll = y;
+}, {passive:true});
+
+// Mobile menu
+const toggle = document.getElementById('mobileToggle');
+const overlay = document.getElementById('mobileOverlay');
+toggle.addEventListener('click', () => {
+  toggle.classList.toggle('active');
+  overlay.classList.toggle('open');
+  document.body.style.overflow = overlay.classList.contains('open') ? 'hidden' : '';
+});
+document.querySelectorAll('.mobile-link').forEach(a => {
+  a.addEventListener('click', () => {
+    toggle.classList.remove('active');
+    overlay.classList.remove('open');
+    document.body.style.overflow = '';
+  });
+});
+
+// Intersection Observer for reveals
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('visible');
+
+      // Count-up animation
+      const countEls = entry.target.querySelectorAll('[data-count]');
+      countEls.forEach(el => {
+        const target = parseInt(el.dataset.count);
+        const suffix = el.dataset.suffix || '';
+        if (el.dataset.counted) return;
+        el.dataset.counted = 'true';
+        let current = 0;
+        const step = Math.max(1, Math.floor(target / 60));
+        const interval = setInterval(() => {
+          current += step;
+          if (current >= target) {
+            current = target;
+            clearInterval(interval);
+          }
+          el.textContent = current + suffix;
+        }, 20);
+      });
+
+      // Gate ring animation
+      const ring = entry.target.querySelector('#gateRing');
+      if (ring && !ring.classList.contains('animate')) {
+        ring.classList.add('animate');
+      }
+
+      // Pipeline fill
+      const pipeFill = entry.target.closest('#pipeline')?.querySelector('#pipelineFill');
+      if (pipeFill && !pipeFill.dataset.filled) {
+        pipeFill.dataset.filled = 'true';
+        const parent = pipeFill.closest('.pipeline-stages');
+        if (parent) {
+          pipeFill.style.height = '100%';
+        }
+      }
+    }
+  });
+}, {threshold: 0.1});
+
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+// Hero pipeline viz
+setTimeout(() => {
+  document.getElementById('heroViz')?.classList.add('visible');
+}, 1000);
+
+// Particles
+const container = document.getElementById('particles');
+if (container) {
+  for (let i = 0; i < 30; i++) {
+    const dot = document.createElement('div');
+    dot.className = 'hero-dot';
+    dot.style.left = Math.random() * 100 + '%';
+    dot.style.animationDuration = (8 + Math.random() * 12) + 's';
+    dot.style.animationDelay = Math.random() * 10 + 's';
+    const size = 2 + Math.random() * 3;
+    dot.style.width = size + 'px';
+    dot.style.height = size + 'px';
+    container.appendChild(dot);
+  }
+}
+</script>
+</body>
+</html>
