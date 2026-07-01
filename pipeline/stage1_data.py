@@ -1,4 +1,5 @@
 import hashlib
+import os
 import random
 import subprocess
 from pathlib import Path
@@ -36,8 +37,6 @@ def write_dataset_hash(data_dir: str) -> str:
 
 def _init_dagshub() -> None:
     """Configure DVC credentials via DagHub SDK (no manual token management)."""
-    import os
-
     try:
         import dagshub
 
@@ -83,7 +82,7 @@ def pull_dataset(subset: bool = False) -> None:
         cmd = ["dvc", "pull", "train_data", "test_data"]
     mode = "subset" if subset else "full"
     log.info("pulling_dataset", extra={"source": "dagshub_dvc_remote", "mode": mode})
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    result = subprocess.run(cmd, capture_output=True, text=True, check=False)
     if result.returncode != 0:
         log.error("dvc_pull_failed", extra={"stderr": result.stderr})
         raise RuntimeError(f"DVC pull failed:\n{result.stderr}")
