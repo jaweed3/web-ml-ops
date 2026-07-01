@@ -117,7 +117,10 @@ def dvc_add(path: Path) -> None:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Create dataset subset for Mac Mini training")
-    parser.add_argument("--src", default="data/dataset", help="Root dataset directory (contains train_data/ and test_data/)")
+    parser.add_argument(
+        "--src", default="data/dataset",
+        help="Root dataset directory (contains train_data/ and test_data/)",
+    )
     parser.add_argument("--dst", default="data/coco_person_subset", help="Subset output directory")
     parser.add_argument("--n_train", type=int, default=300, help="Number of training images")
     parser.add_argument("--n_val", type=int, default=80, help="Number of validation images")
@@ -150,7 +153,10 @@ if __name__ == "__main__":
     n_test = copy_test(src, dst, args.n_val, args.seed)
     write_dataset_yaml(dst)
 
-    log.info("subset_created", extra={"train": n_train, "val": n_val, "test": n_test, "dst": str(dst)})
+    log.info(
+        "subset_created",
+        extra={"train": n_train, "val": n_val, "test": n_test, "dst": str(dst)},
+    )
 
     # Auto DVC track
     dvc_add(dst)
