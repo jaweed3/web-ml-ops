@@ -78,10 +78,15 @@ DAGSHUB_USERNAME=your-dagshub-username
 DAGSHUB_REPO=rescuevision-mlops
 DAGSHUB_TOKEN=your-dagshub-access-token
 
-# Serving (Phase 2)
+# Serving
 MODEL_NAME=rescuevision-onnx-int8
 MODEL_VERSION=latest
 MODEL_FORMAT=onnx_int8
+
+# Shadow deployment (optional)
+# CANDIDATE_MODEL_NAME=rescuevision-onnx-fp32
+# CANDIDATE_MODEL_VERSION=latest
+# CANDIDATE_MODEL_FORMAT=onnx_fp32
 
 CONF_THRESHOLD=0.25
 IOU_THRESHOLD=0.45
@@ -136,6 +141,21 @@ dvc remote default origin
 ```
 
 The `--local` flag writes credentials to `.dvc/config.local` (gitignored). The base `.dvc/config` file is committed and contains no secrets.
+
+---
+
+## Compute drift baseline
+
+After training and exporting, compute the drift baseline from training images:
+
+```bash
+# Requires train_data/ directory (DVC pull)
+dvc pull
+uv run python scripts/compute_baseline.py
+# → writes artifacts/drift_baseline.json
+```
+
+The baseline is loaded by the inference server at startup to compute per-request drift scores.
 
 ---
 
