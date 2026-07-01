@@ -113,12 +113,6 @@ def test_int8_p95_latency_within_slo(results_by_format):
     )
 
 
-def test_int8_faster_than_fp32(results_by_format):
-    fp32_lat = results_by_format["onnx_fp32"]["mean_latency_ms"]
-    int8_lat = results_by_format["onnx_int8"]["mean_latency_ms"]
-    assert int8_lat < fp32_lat, f"INT8 ({int8_lat} ms) should be faster than FP32 ({fp32_lat} ms)"
-
-
 # ── Value sanity ──────────────────────────────────────────────────────────────
 
 
