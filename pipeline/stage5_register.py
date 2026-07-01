@@ -53,6 +53,7 @@ def get_git_hash() -> str:
         ["git", "rev-parse", "--short", "HEAD"],
         capture_output=True,
         text=True,
+        check=False,
     )
     return result.stdout.strip()
 
