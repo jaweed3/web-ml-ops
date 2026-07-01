@@ -1,0 +1,417 @@
+openapi: "3.0.3"
+info:
+  title: RescueVision Inference API
+  description: |
+    Edge-optimized victim detection for SAR drone footage.
+
+    Authentication via `X-API-Key` header. If `API_KEY` env var is unset
+    (local dev / CI), auth is disabled automatically.
+  version: "2.0.0"
+  contact:
+    name: RescueVision MLOps
+    url: https://github.com/jaweed3/web-ml-ops
+
+servers:
+  - url: http://localhost:8080
+    description: Local development
+  - url: https://api.rescuevision.example.com
+    description: Production (example)
+
+paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: Liveness probe
+      description: Always returns 200 while the process is alive.
+      operationId: health
+      responses:
+        "200":
+          description: Service is alive
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+
+  /ready:
+    get:
+      tags: [Health]
+      summary: Readiness probe
+      description: |
+        Returns 200 only after the model session is initialized and ready.
+        Returns 503 while the model is still loading.
+      operationId: ready
+      responses:
+        "200":
+          description: Model is loaded and ready
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReadyResponse"
+        "503":
+          description: Model not ready yet
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReadyResponse"
+
+  /predict:
+    post:
+      tags: [Inference]
+      summary: Run victim detection
+      description: |
+        Upload an image (JPEG / PNG / WebP, max 10 MB) and receive structured
+        detections with bounding boxes, confidence scores, and model metadata.
+
+        Rate-limited to 10 requests per minute per IP.
+      operationId: predict
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: header
+          name: Content-Length
+          schema:
+            type: integer
+            example: 524288
+          description: Declared upload size in bytes. Rejected immediately if > 10 MB.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Image file (JPEG, PNG, or WebP)
+              required:
+                - file
+      responses:
+        "200":
+          description: Successful inference
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PredictResponse"
+        "401":
+          description: Missing or invalid API key
+        "422":
+          description: |
+            Invalid image — wrong MIME type, corrupt bytes, or file too large
+        "429":
+          description: Rate limit exceeded — max 10 requests per minute per IP
+        "503":
+          description: Model not ready yet
+
+  /model/info:
+    get:
+      tags: [Model]
+      summary: Model metadata
+      description: |
+        Returns the currently loaded model's name, version, format, input
+        shape, and the timestamp when the ONNX session was initialized.
+      operationId: modelInfo
+      security:
+        - ApiKeyAuth: []
+      responses:
+        "200":
+          description: Model metadata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModelInfoResponse"
+
+  /model/version:
+    get:
+      tags: [Model]
+      summary: Model version
+      description: Quick endpoint to get just the model version string.
+      operationId: modelVersion
+      security:
+        - ApiKeyAuth: []
+      responses:
+        "200":
+          description: Model version
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModelVersionResponse"
+
+  /feedback:
+    post:
+      tags: [Feedback]
+      summary: Submit ground-truth labels
+      description: |
+        Submit ground-truth bounding boxes for a previous prediction request.
+        Logged to `artifacts/feedback.jsonl` for offline mAP computation.
+
+        Rate-limited to 30 requests per minute per IP.
+      operationId: feedback
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FeedbackRequest"
+      responses:
+        "200":
+          description: Feedback recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FeedbackResponse"
+
+  /metrics:
+    get:
+      tags: [Observability]
+      summary: Prometheus metrics
+      description: |
+        Prometheus scrape endpoint exposing inference latency, request counts,
+        detection distribution, drift scores, and model metadata.
+      operationId: metrics
+      responses:
+        "200":
+          description: Prometheus metrics in plain text
+          content:
+            text/plain:
+              schema:
+                type: string
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: |
+        API key for authentication. Set via `API_KEY` env var.
+        If unset (local dev / CI), auth is disabled.
+
+  schemas:
+    HealthResponse:
+      type: object
+      required: [status, timestamp]
+      properties:
+        status:
+          type: string
+          enum: [ok]
+          description: "'ok' when the process is alive"
+        timestamp:
+          type: string
+          format: date-time
+          description: ISO-8601 UTC timestamp
+      example:
+        status: ok
+        timestamp: "2026-07-01T12:00:00Z"
+
+    ReadyResponse:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [ready, loading, not_initialized]
+          description: Server readiness state
+        model_version:
+          type: string
+          nullable: true
+          description: Loaded model version
+        loaded_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: ISO-8601 UTC timestamp when model became ready
+      example:
+        status: ready
+        model_version: "5"
+        loaded_at: "2026-07-01T12:00:00Z"
+
+    PredictResponse:
+      type: object
+      required: [model_version, model_format, inference_time_ms, image_shape, request_id]
+      properties:
+        model_version:
+          type: string
+          description: MLflow model version that produced this result
+        model_format:
+          type: string
+          enum: [onnx_fp32, onnx_int8, tflite_int8]
+          description: Artifact format
+        inference_time_ms:
+          type: number
+          format: float
+          description: Pure ONNX inference time (excludes pre/post-processing)
+        detections:
+          type: array
+          items:
+            $ref: "#/components/schemas/Detection"
+        image_shape:
+          type: array
+          items:
+            type: integer
+          minItems: 2
+          maxItems: 2
+          description: "[height, width] of the resized input tensor"
+        request_id:
+          type: string
+          description: "Unique request identifier — present in response header X-Request-ID"
+      example:
+        model_version: "5"
+        model_format: onnx_int8
+        inference_time_ms: 9.4
+        detections:
+          - class_id: 0
+            class_name: person
+            confidence: 0.9231
+            bbox:
+              x1: 120
+              y1: 200
+              x2: 300
+              y2: 450
+              cx: 210
+              cy: 325
+              width: 180
+              height: 250
+        image_shape: [320, 320]
+        request_id: a1b2c3d4e5
+
+    Detection:
+      type: object
+      required: [class_id, class_name, confidence, bbox]
+      properties:
+        class_id:
+          type: integer
+          description: COCO class id
+        class_name:
+          type: string
+          description: Human-readable class label
+        confidence:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          description: Detection confidence score
+        bbox:
+          $ref: "#/components/schemas/BBox"
+
+    BBox:
+      type: object
+      required: [x1, y1, x2, y2, cx, cy, width, height]
+      properties:
+        x1:
+          type: integer
+          description: Left edge (pixels)
+        y1:
+          type: integer
+          description: Top edge (pixels)
+        x2:
+          type: integer
+          description: Right edge (pixels)
+        y2:
+          type: integer
+          description: Bottom edge (pixels)
+        cx:
+          type: integer
+          description: Centre x (pixels)
+        cy:
+          type: integer
+          description: Centre y (pixels)
+        width:
+          type: integer
+          description: Box width (pixels)
+        height:
+          type: integer
+          description: Box height (pixels)
+
+    ModelInfoResponse:
+      type: object
+      required: [name, version, format, input_shape]
+      properties:
+        name:
+          type: string
+          description: MLflow registered model name
+        version:
+          type: string
+          description: Resolved model version string
+        format:
+          type: string
+          enum: [onnx_fp32, onnx_int8, tflite_int8]
+          description: Artifact format
+        input_shape:
+          type: array
+          items:
+            type: integer
+          description: ONNX session input shape [N, C, H, W]
+        loaded_at:
+          type: number
+          format: float
+          nullable: true
+          description: Unix timestamp when session was initialized
+      example:
+        name: rescuevision-onnx-int8
+        version: "5"
+        format: onnx_int8
+        input_shape: [1, 3, 320, 320]
+        loaded_at: 1750000000.0
+
+    ModelVersionResponse:
+      type: object
+      required: [version]
+      properties:
+        version:
+          type: string
+      example:
+        version: "5"
+
+    FeedbackRequest:
+      type: object
+      required: [request_id]
+      properties:
+        request_id:
+          type: string
+          description: Request ID from /predict response
+        detections:
+          type: array
+          items:
+            $ref: "#/components/schemas/FeedbackBBox"
+          description: Ground truth bounding boxes
+        annotator:
+          type: string
+          default: ""
+          description: Optional annotator identifier
+      example:
+        request_id: a1b2c3d4e5
+        detections:
+          - x1: 120
+            y1: 200
+            x2: 300
+            y2: 450
+        annotator: "jaweed3"
+
+    FeedbackBBox:
+      type: object
+      required: [x1, y1, x2, y2]
+      properties:
+        x1:
+          type: integer
+          description: Left edge (pixels)
+        y1:
+          type: integer
+          description: Top edge (pixels)
+        x2:
+          type: integer
+          description: Right edge (pixels)
+        y2:
+          type: integer
+          description: Bottom edge (pixels)
+
+    FeedbackResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          default: ok
+      example:
+        status: ok
