@@ -170,8 +170,12 @@ ModelLoader resolves "latest" → version N
 ModelLoader downloads artifact to /tmp/rescuevision_model/
   ↓
 ONNXRunner initializes session (ORT_ENABLE_ALL optimization)
+  ↓ (if candidate_model configured)
+Candidate ONNXRunner initializes shadow session
   ↓
-PredictionPipeline wired with InferenceConfig
+PredictionPipeline wired with InferenceConfig (+ optional shadow runner)
+  ↓
+DriftDetector loads baseline (rescuevision_input_drift_score gauge ready)
   ↓
 record_model_ready() → Prometheus model info registered
   ↓
@@ -187,28 +191,33 @@ During model download (typically 5–30s), `/health` returns 200 but `/ready` re
 ```
 app/
 ├── constant/__init__.py       all constants — paths, thresholds, class names
-├── entity/config_entity.py    frozen dataclasses for all config sections
-├── config/configuration.py    ConfigurationManager — single entry point
+├── config/configuration.py    ConfigurationManager — unified Pydantic config
 ├── components/
 │   ├── model_loader.py        pull artifact from MLflow registry
-│   ├── preprocessor.py        bytes → float32 tensor (letterbox resize)
+│   ├── preprocessor.py        bytes → float32 tensor (letterbox resize) + stats
 │   ├── postprocessor.py       raw ONNX output → detections + NMS
-│   ├── runner.py              ONNX session singleton, thread-safe
-│   └── metrics.py             Prometheus metric definitions
+│   ├── runner.py              ONNX session, thread-safe
+│   ├── prediction_logger.py   log_prediction() + log_feedback() → JSONL
+│   └── metrics.py             Prometheus metric definitions (incl. INPUT_DRIFT_SCORE)
+├── monitoring/
+│   └── drift.py               DriftDetector — per-request drift scoring
 ├── pipeline/
-│   └── prediction_pipeline.py orchestrates preprocessor → runner → postprocessor
+│   └── prediction_pipeline.py orchestrates preprocessor → runner → postprocessor + drift + shadow
 ├── schema/
 │   ├── predict.py             PredictResponse, DetectionSchema, BBoxSchema
 │   ├── health.py              HealthResponse, ReadyResponse
-│   └── meta.py                ModelInfoResponse, ModelVersionResponse
+│   ├── meta.py                ModelInfoResponse, ModelVersionResponse
+│   └── feedback.py            FeedbackRequest
 ├── router/
 │   ├── predict.py             POST /predict
+│   ├── feedback.py            POST /feedback
 │   ├── health.py              GET /health, GET /ready
 │   ├── meta.py                GET /model/info, GET /model/version
 │   └── metrics.py             GET /metrics
 ├── middleware/
 │   └── request_logger.py      structured logging + Prometheus counter/histogram
 ├── utils/common.py            file I/O, timing, ID helpers
+├── dependencies.py            FastAPI DI (get_runner)
 └── main.py                    FastAPI app + lifespan
 ```
 
