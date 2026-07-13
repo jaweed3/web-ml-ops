@@ -1,72 +1,88 @@
 # RescueVision MLOps
 
-End-to-end ML pipeline for SAR victim detection — from versioned dataset to edge-ready model artifacts and a production inference server with drift monitoring, feedback collection, and shadow deployment.
+[![Pipeline](https://github.com/jaweed3/rescuevision-mlops/actions/workflows/pipeline.yml/badge.svg)](https://github.com/jaweed3/rescuevision-mlops/actions/workflows/pipeline.yml)
+![Python 3.10+](https://img.shields.io/badge/python-3.10+-3776AB?logo=python&logoColor=white)
+![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)
+![Tests](https://img.shields.io/badge/tests-49_passed-10B981)
 
-> **Status:** Serving layer deployed with drift detection, feedback loop, and shadow deployment. CI/CD builds and publishes Docker images. All 43 tests pass, ruff clean.
-
----
-
-## Pipeline
-
-### DVC Pipeline DAG
-
-![DVC Pipeline Graph](docs/dvc-pipeline-graph.png)
-
-```
-dataset (DVC)
-  → train YOLOv8n (MLflow)
-  → export ONNX FP32 / INT8 + TFLite INT8
-  → benchmark + metric gate
-  → MLflow Model Registry (Staging → Production)
-  → FastAPI inference server
-    ├── drift detection (input statistics vs training baseline)
-    ├── feedback collection (POST /feedback → JSONL)
-    └── shadow deployment (candidate model A/B comparison)
-  → Prometheus + Grafana
-```
-
-```mermaid
-flowchart TD
-  node1["benchmark"]
-  node2["data"]
-  node3["export"]
-  node4["register"]
-  node5["train"]
-  node1-->node4
-  node2-->node1
-  node2-->node4
-  node2-->node5
-  node3-->node1
-  node5-->node3
-  node6["data/coco_person_subset.dvc"]
-```
+End-to-end MLOps platform for search-and-rescue victim detection from drone footage. Trains YOLOv8n, exports to edge-optimized formats (ONNX FP32/INT8, TFLite INT8), benchmarks and registers artifacts, and serves predictions behind a production FastAPI server with drift monitoring, feedback collection, and shadow deployment.
 
 ---
 
-### MLflow Tracking
+## Architecture
 
-![MLflow UI](docs/mlflow-ui.png)
+![Pipeline Architecture](docs/architecture.png)
 
-Training metrics (mAP50, precision, recall) and benchmark results (latency, model size) are logged per run.
+<details>
+<summary>Text overview</summary>
+
+```
+DVC Pipeline
+  1. Data — pull + validate labels
+  2. Train — YOLOv8n via Ultralytics
+  3. Export — ONNX FP32, ONNX INT8 (dynamic quantization), TFLite INT8
+  4. Benchmark — latency (mean/p95) + mAP50 on validation set
+  5. Register — metric gate (INT8 mAP50 >= 97% of FP32) → MLflow Model Registry
+
+Serving
+  FastAPI → Preprocessor → ONNX Runtime → Postprocessor → Response
+                                    ↕                   ↕
+                            Drift Detector      Prediction Logger
+                                    ↕
+                            Shadow Runner (optional A/B)
+
+Monitoring
+  FastAPI /metrics → Prometheus → Grafana
+```
+
+</details>
 
 ---
 
-### Monitoring Stack
+## Results
 
-![Grafana Dashboard](docs/grafana-ui.png)
+| Format | Size | Mean Latency | P95 Latency | Notes |
+|--------|------|-------------|-------------|-------|
+| ONNX FP32 | 12.1 MB | 7.4 ms | 11.0 ms | Baseline |
+| ONNX INT8 | 3.2 MB | 9.1 ms | 11.2 ms | 74% smaller, ~22% slower |
+| TFLite INT8 | ~3 MB | — | — | Edge/mobile deployment |
 
-![Prometheus UI](docs/prometheus-ui.png)
+*Benchmarked on 100 validation images, CPU inference.*
 
-Prometheus scrapes inference metrics from the FastAPI server; Grafana provides pre-configured dashboards.
+The INT8 model's mAP50 must stay within 97% of the FP32 baseline to pass the metric gate — poor quantizations are automatically rejected from the registry.
+
+---
+
+## Key Features
+
+### Model Quantization & Benchmarking
+
+Dynamic quantization (ONNX Runtime) converts FP32 weights to INT8 with minimal accuracy loss. Each artifact is benchmarked for latency (mean + p95) and mAP50 on the validation set. The metric gate enforces quality before registration.
+
+### Drift Detection
+
+Per-request input statistics (brightness, contrast, entropy) are scored against a training-data baseline using Mahalanobis distance. Scores above 3.0 trigger Prometheus alerts. Baseline is computed offline from training images.
+
+### Shadow Deployment
+
+A candidate model can run alongside the primary for silent A/B comparison. Shadow outputs are logged but never returned to the client — zero risk to production traffic.
+
+### Feedback Loop
+
+Ground truth labels can be submitted via `POST /feedback` and paired with prediction logs via `request_id` for offline mAP evaluation.
+
+### Model Registry with Auto-Rollback
+
+Promotion from Staging to Production includes an mAP50 regression guard (>1% drop blocks promotion) and optional health-check polling with automatic rollback on failure.
 
 ---
 
 ## Quickstart
 
-Requires [uv](https://docs.astral.sh/uv/) and Python ≥ 3.10.
+Requires [uv](https://docs.astral.sh/uv/) and Python >= 3.10.
 
 ```bash
-git clone <your-repo-url>
+git clone https://github.com/jaweed3/rescuevision-mlops.git
 cd rescuevision-mlops
 
 # Install dependencies
@@ -99,13 +115,28 @@ dvc repro
 | Service | URL | Credentials |
 |---|---|---|
 | FastAPI Server | http://localhost:8080/docs | — |
-| MLflow UI | http://localhost:5000 | — |
 | Grafana | http://localhost:3000 | admin / rescuevision |
 | Prometheus | http://localhost:9090 | — |
 
 ---
 
-## Running individual pipeline stages
+## Monitoring
+
+![Grafana Dashboard](docs/grafana-ui.png)
+
+Prometheus scrapes inference metrics (request rate, latency histogram, drift score, detection count) from the FastAPI server every 15 seconds. Pre-configured alert rules cover:
+
+- **High latency** — p95 inference > 150ms or request duration > 500ms
+- **Error rate** — 5xx responses exceed 5% of total
+- **Drift** — input drift score > 3.0
+- **Traffic drop** — zero requests for 5 minutes
+- **Detection anomaly** — detection rate drops >70% vs previous day
+
+![Prometheus UI](docs/prometheus-ui.png)
+
+---
+
+## Running Individual Stages
 
 ```bash
 # Stage 1 — data pull + validation
@@ -114,7 +145,7 @@ uv run python -m pipeline.stage1_data
 # Stage 2 — training (requires make install-train)
 uv run python -m pipeline.stage2_train
 
-# Stage 3 — export & quantization (verified)
+# Stage 3 — export & quantization
 uv run python -m pipeline.stage3_export
 
 # Stage 4 — benchmark
@@ -126,38 +157,24 @@ uv run python -m pipeline.stage5_register --stage Staging
 # Promote Staging → Production (with mAP50 regression guard)
 uv run python -m pipeline.stage_promote
 
-# Debug mode — runs stages 1-3 with dummy data, no GPU required
-make debug
-
 # Compute drift baseline from training images
 uv run python scripts/compute_baseline.py
 ```
 
 ---
 
-## Features
+## Testing
 
-### Drift Detection
+```bash
+# Run all tests with coverage
+make test
 
-Input distribution drift is computed per-request and compared against a training-data baseline. Brightness, contrast, and entropy statistics are scored via a Mahalanobis-distance heuristic. Score > 3.0 triggers a Prometheus alert (`InputDriftHigh`).
-
-- **Baseline:** computed offline with `scripts/compute_baseline.py` from training images
-- **Metric:** `rescuevision_input_drift_score` gauge
-- **Integration:** runs inside `PredictionPipeline`, non-blocking
-
-### Feedback Loop
-
-Ground truth labels can be submitted after prediction for offline evaluation:
-
-```
-POST /feedback  {"request_id": "...", "detections": [...]}
+# Run specific test suites
+uv run pytest tests/serve/ -v        # API + component tests
+uv run pytest tests/test_benchmark.py -v  # Pipeline stage tests
 ```
 
-Logged to `artifacts/feedback.jsonl`. Paired with `artifacts/predictions.jsonl` via `request_id` to compute serving mAP.
-
-### Shadow Deployment
-
-A candidate model can be loaded alongside the primary for silent A/B comparison. Configured in `configs/serve_config.yaml` under `candidate_model`. The shadow runner processes every request but its output is only logged — never returned to the client.
+49 tests covering pipeline stages (data validation, export, benchmark, metric gate, registration) and serving layer (API endpoints, preprocessor, postprocessor, prediction logger, security).
 
 ---
 
@@ -167,46 +184,52 @@ A candidate model can be loaded alongside the primary for silent A/B comparison.
 |---|---|
 | [docs/setup.md](docs/setup.md) | Prerequisites, install, env vars, DVC remote |
 | [docs/pipeline.md](docs/pipeline.md) | Phase 1 — stages 1-5 reference |
-| [docs/serving.md](docs/serving.md) | Phase 2 — API reference, Docker, architecture, drift/feedback/shadow |
+| [docs/serving.md](docs/serving.md) | Phase 2 — API reference, Docker, architecture |
 | [docs/monitoring.md](docs/monitoring.md) | Prometheus metrics, Grafana dashboard, drift alerts |
 | [docs/testing.md](docs/testing.md) | How to test everything, start to finish |
-| [docs/ci-cd.md](docs/ci-cd.md) | CI/CD jobs, environments, secrets, docker-build |
+| [docs/ci-cd.md](docs/ci-cd.md) | CI/CD jobs, environments, secrets |
 | [docs/architecture.md](docs/architecture.md) | Architecture decisions and trade-offs |
 
 ---
 
-## Repo layout
+## Tech Stack
+
+| Layer | Technologies |
+|---|---|
+| ML | YOLOv8n, Ultralytics, ONNX Runtime, TensorFlow (TFLite) |
+| Serving | FastAPI, uvicorn, Pydantic v2, SlowAPI |
+| Tracking | MLflow (DagsHub), DVC |
+| Monitoring | Prometheus, Grafana |
+| Infra | Docker, Kubernetes, GitHub Actions |
+| Quality | Ruff, mypy, pytest, pre-commit |
+
+---
+
+## Repo Layout
 
 ```
 rescuevision-mlops/
 ├── pipeline/          # Stage 1-5 scripts
-├── core/              # Logger, Pydantic config models, MLflow helpers
+├── core/              # Logger, Pydantic config, MLflow helpers
 ├── app/               # FastAPI serving layer
-│   ├── components/    # ModelLoader, Preprocessor, Postprocessor, Runner, Metrics, PredictionLogger
-│   ├── config/        # ConfigurationManager
-│   ├── constant/      # All constants
-│   ├── monitoring/    # DriftDetector, image stats
-│   ├── pipeline/      # PredictionPipeline (wires preprocessor → runner → postprocessor + drift)
-│   ├── router/        # FastAPI routes (predict, health, meta, metrics, feedback)
-│   ├── schema/        # Pydantic request/response models
-│   ├── middleware/     # Request logger + metrics hook
-│   ├── dependencies.py# FastAPI DI (get_runner)
-│   └── utils/         # Shared utilities
+│   ├── components/    # Preprocessor, Runner, Postprocessor, Metrics, DriftDetector
+│   ├── pipeline/      # PredictionPipeline (wires components)
+│   ├── router/        # Routes (predict, health, meta, metrics, feedback)
+│   ├── middleware/     # Request logger, security headers
+│   └── schema/        # Pydantic request/response models
 ├── configs/           # train_config.yaml, serve_config.yaml
-├── monitoring/        # Prometheus scrape config + Grafana provisioning + alerts.yml
-├── scripts/           # compute_baseline.py, smoke_test.sh
-├── tests/
-│   ├── serve/         # API + component unit tests (mocked)
-│   ├── test_metric_gate.py
-│   ├── test_data.py
-│   ├── test_export.py
-│   ├── test_benchmark.py
-│   └── test_register.py
-├── research/          # Jupyter notebooks
+├── monitoring/        # Prometheus + Grafana provisioning
+├── k8s/               # Kubernetes manifests
+├── tests/             # 49 tests (pipeline + serving)
 ├── docs/              # All documentation
+├── scripts/           # compute_baseline.py, smoke_test.sh
 ├── dvc.yaml           # Pipeline DAG
 ├── docker-compose.yml # Infra stack
-├── Dockerfile         # Multi-stage uv build
-├── pyproject.toml     # Ruff, mypy, pytest config
-└── k8s/               # Kubernetes manifests (deployment, service)
+└── Dockerfile         # Multi-stage uv build
 ```
+
+---
+
+## License
+
+MIT
