@@ -52,8 +52,11 @@ def client():
     mock_runner.run.return_value = ([dummy_output], 12.3, "req_test001")
 
     cfg = InferenceConfig(
-        imgsz=320, conf_threshold=0.25, iou_threshold=0.45,
-        max_detections=100, n_threads=2,
+        imgsz=320,
+        conf_threshold=0.25,
+        iou_threshold=0.45,
+        max_detections=100,
+        n_threads=2,
     )
     pipeline = _make_pipeline(mock_runner, cfg)
 

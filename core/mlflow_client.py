@@ -46,7 +46,8 @@ def register_model(artifact_path: str, name: str, tags: dict) -> None:
 
     try:
         client.create_registered_model(name, tags=tags)
-    except mlflow.exceptions.MlflowException:
-        pass  # model already exists
+    except mlflow.exceptions.MlflowException as exc:
+        if "already exists" not in str(exc).lower():
+            raise
 
     client.create_model_version(name=name, source=source, run_id=run_id, tags=tags)

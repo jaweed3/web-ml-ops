@@ -13,12 +13,6 @@ log = get_logger("pipeline.prediction")
 
 
 class PredictionPipeline:
-    """
-    Orchestrates the full inference pipeline for a single request.
-    Wires preprocessor → ONNX runner → postprocessor in sequence.
-    Optionally runs drift detection and shadow model inference.
-    """
-
     def __init__(
         self,
         runner: ONNXRunner,
@@ -52,7 +46,6 @@ class PredictionPipeline:
             drift = self._drift.score(img_stats)
             record_drift(drift)
 
-        # ponytail: shadow runner — silent dual inference for A/B comparison
         if self._shadow_runner is not None:
             self._run_shadow(blob, req_id)
 

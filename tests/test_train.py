@@ -13,8 +13,6 @@ import pytest
 
 CHECKPOINT = Path("runs/detect/runs/train/weights/best.pt")
 
-# ── Checkpoint ────────────────────────────────────────────────────────────────
-
 
 def test_checkpoint_exists():
     assert CHECKPOINT.exists(), "best.pt not found — run `make train` first"
@@ -35,9 +33,6 @@ def test_checkpoint_is_loadable():
 
     model = YOLO(str(CHECKPOINT))
     assert model is not None
-
-
-# ── MLflow experiment ─────────────────────────────────────────────────────────
 
 
 @pytest.fixture(scope="module")

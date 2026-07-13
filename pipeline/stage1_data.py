@@ -15,10 +15,6 @@ log = get_logger("stage1_data")
 
 
 def compute_dataset_hash(data_dir: str) -> str:
-    """
-    Stable MD5 over all label files (sorted by path).
-    Labels are small text files — cheap to hash, fully reproducible.
-    """
     h = hashlib.md5()
     label_files = sorted(Path(data_dir).glob("train_data/labels/**/*.txt"))
     for lbl in label_files:

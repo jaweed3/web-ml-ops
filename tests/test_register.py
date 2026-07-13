@@ -17,9 +17,6 @@ REGISTERED_MODELS = [
 ]
 
 
-# ── MLflow client fixture ─────────────────────────────────────────────────────
-
-
 @pytest.fixture(scope="module")
 def mlflow_client():
     mlflow = pytest.importorskip("mlflow")
@@ -39,9 +36,6 @@ def mlflow_client():
     return mlflow.MlflowClient()
 
 
-# ── Model existence ───────────────────────────────────────────────────────────
-
-
 @pytest.mark.parametrize("model_name", REGISTERED_MODELS)
 def test_model_is_registered(mlflow_client, model_name):
     """All three artifacts must have at least one registered version."""
@@ -56,9 +50,6 @@ def test_model_has_staging_or_none_version(mlflow_client, model_name):
     """After stage5_register, models should be in Staging or None (not Production)."""
     versions = mlflow_client.get_latest_versions(model_name, stages=["Staging", "None"])
     assert len(versions) > 0, f"No Staging/None version found for '{model_name}'"
-
-
-# ── Tags ──────────────────────────────────────────────────────────────────────
 
 
 @pytest.mark.parametrize("model_name", REGISTERED_MODELS)
@@ -80,18 +71,12 @@ def test_model_version_has_pipeline_tag(mlflow_client, model_name):
     assert "pipeline" in latest.tags, f"'{model_name}' v{latest.version} missing 'pipeline' tag"
 
 
-# ── Source run linkage ────────────────────────────────────────────────────────
-
-
 @pytest.mark.parametrize("model_name", REGISTERED_MODELS)
 def test_model_version_linked_to_run(mlflow_client, model_name):
     """Each registered version should link back to a training run."""
     versions = mlflow_client.search_model_versions(f"name='{model_name}'")
     latest = sorted(versions, key=lambda v: int(v.version), reverse=True)[0]
     assert latest.run_id, f"'{model_name}' v{latest.version} has no linked run_id"
-
-
-# ── No duplicate registration ─────────────────────────────────────────────────
 
 
 def test_no_duplicate_versions_same_commit(mlflow_client):

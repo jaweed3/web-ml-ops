@@ -11,18 +11,7 @@ log = get_logger("components.model_loader")
 
 
 class ModelLoader:
-    """
-    Pulls a registered ONNX model artifact from the MLflow Model Registry
-    (hosted on DagsHub) and caches it locally.
-
-    Responsibilities:
-    - Authenticate to DagsHub MLflow tracking server.
-    - Resolve "latest" version to a concrete version number.
-    - Download the artifact to a local cache directory.
-    - Return the local .onnx file path + resolved version string.
-
-    The loader runs ONCE at server startup, never per request.
-    """
+    """Pulls a registered ONNX model from the MLflow Registry and caches it locally."""
 
     def __init__(
         self,
@@ -33,8 +22,6 @@ class ModelLoader:
         self._dagshub = dagshub_cfg
         self._model = model_cfg
         self._cache = cache_cfg
-
-    # ── private ────────────────────────────────────────────────────────────────
 
     def _init_tracking(self) -> None:
         uri = f"https://dagshub.com/{self._dagshub.username}/{self._dagshub.repo}.mlflow"
@@ -73,18 +60,8 @@ class ModelLoader:
         log.warning("using_cached_model", extra={"path": str(best)})
         return best
 
-    # ── public ────────────────────────────────────────────────────────────────
-
     def load(self) -> tuple[Path, str]:
-        """
-        Download model from MLflow registry, falling back to the local cache
-        if the registry is unreachable. Raises RuntimeError only when both
-        registry and cache are unavailable.
-
-        Returns
-        -------
-        (onnx_path, version) : tuple[Path, str]
-        """
+        """Download model from MLflow, falling back to local cache if unreachable."""
         self._init_tracking()
         cache_dir = Path(self._cache.model_dir)
         ensure_dir(cache_dir)

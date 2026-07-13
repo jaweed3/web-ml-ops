@@ -11,7 +11,6 @@ import pytest
 
 REPORT_PATH = Path("artifacts/benchmark_report.json")
 
-# ── SLO thresholds ────────────────────────────────────────────────────────────
 # Adjust these based on your target hardware.
 # These defaults assume a modern laptop CPU.
 
@@ -20,9 +19,6 @@ SLO_ONNX_INT8_MEAN_LATENCY_MS = 100  # INT8 must be under 100ms mean
 SLO_ONNX_INT8_P95_LATENCY_MS = 150  # INT8 p95 must be under 150ms
 SLO_FP32_MAX_SIZE_MB = 15  # sanity cap for YOLOv8n FP32
 SLO_INT8_MAX_SIZE_MB = 10  # sanity cap for YOLOv8n INT8
-
-
-# ── Fixtures ──────────────────────────────────────────────────────────────────
 
 
 @pytest.fixture(scope="module")
@@ -36,9 +32,6 @@ def report() -> dict:
 @pytest.fixture(scope="module")
 def results_by_format(report) -> dict:
     return {r["format"]: r for r in report["results"]}
-
-
-# ── Schema ────────────────────────────────────────────────────────────────────
 
 
 def test_report_exists():
@@ -66,9 +59,6 @@ def test_both_onnx_formats_present(results_by_format):
         assert fmt in results_by_format, f"Format '{fmt}' missing from benchmark report"
 
 
-# ── Size ──────────────────────────────────────────────────────────────────────
-
-
 def test_int8_smaller_than_fp32(results_by_format):
     fp32_mb = results_by_format["onnx_fp32"]["model_size_mb"]
     int8_mb = results_by_format["onnx_int8"]["model_size_mb"]
@@ -87,9 +77,6 @@ def test_int8_size_within_sanity_cap(results_by_format):
     assert size < SLO_INT8_MAX_SIZE_MB, (
         f"INT8 model {size} MB exceeds sanity cap {SLO_INT8_MAX_SIZE_MB} MB"
     )
-
-
-# ── Latency SLOs ──────────────────────────────────────────────────────────────
 
 
 def test_fp32_mean_latency_within_slo(results_by_format):
@@ -111,9 +98,6 @@ def test_int8_p95_latency_within_slo(results_by_format):
     assert lat < SLO_ONNX_INT8_P95_LATENCY_MS, (
         f"INT8 p95 latency {lat} ms exceeds SLO {SLO_ONNX_INT8_P95_LATENCY_MS} ms"
     )
-
-
-# ── Value sanity ──────────────────────────────────────────────────────────────
 
 
 def test_latency_values_are_positive(report):

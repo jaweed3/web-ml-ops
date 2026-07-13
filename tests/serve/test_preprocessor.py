@@ -12,9 +12,6 @@ def make_jpeg(h: int = 480, w: int = 640) -> bytes:
     return buf.tobytes()
 
 
-# ── Shape & dtype ──────────────────────────────────────────────────────────────
-
-
 def test_output_shape_square_input():
     blob, _ = ImagePreprocessor(imgsz=640).run(make_jpeg(640, 640))
     assert blob.shape == (1, 3, 640, 640)
@@ -35,16 +32,10 @@ def test_output_dtype_is_float32():
     assert blob.dtype == np.float32
 
 
-# ── Normalization ──────────────────────────────────────────────────────────────
-
-
 def test_values_normalized_between_0_and_1():
     blob, _ = ImagePreprocessor().run(make_jpeg())
     assert blob.min() >= 0.0
     assert blob.max() <= 1.0
-
-
-# ── Error handling ────────────────────────────────────────────────────────────
 
 
 def test_corrupt_bytes_raises_value_error():
@@ -55,9 +46,6 @@ def test_corrupt_bytes_raises_value_error():
 def test_empty_bytes_raises_value_error():
     with pytest.raises(ValueError, match="Could not decode"):
         ImagePreprocessor().run(b"")
-
-
-# ── Custom imgsz ──────────────────────────────────────────────────────────────
 
 
 def test_custom_imgsz_320():

@@ -8,8 +8,6 @@ _API_KEY constant in app.dependencies.
 
 from unittest.mock import patch
 
-# ── API key auth ──────────────────────────────────────────────────────────────
-
 
 def test_predict_passes_when_api_key_disabled(client, sample_image_bytes):
     """Default: API_KEY env not set → all requests pass through."""
@@ -49,9 +47,6 @@ def test_predict_200_when_api_key_correct(client, sample_image_bytes):
     assert r.status_code == 200
 
 
-# ── Auth on metadata endpoints ────────────────────────────────────────────────
-
-
 def test_model_info_401_when_api_key_required_and_missing(client):
     with patch("app.dependencies._API_KEY", "secret-key"):
         r = client.get("/model/info")
@@ -76,9 +71,6 @@ def test_model_version_200_when_api_key_correct(client):
     assert r.status_code == 200
 
 
-# ponytail: health/ready stay open for k8s/Docker probes
-
-
 def test_health_passes_without_api_key(client):
     with patch("app.dependencies._API_KEY", "secret-key"):
         r = client.get("/health")
@@ -91,9 +83,6 @@ def test_ready_passes_without_api_key(client):
     assert r.status_code == 200
 
 
-# ── Exception sanitization ────────────────────────────────────────────────────
-
-
 def test_predict_returns_generic_message_on_corrupt_image(client):
     r = client.post(
         "/predict",
@@ -101,9 +90,6 @@ def test_predict_returns_generic_message_on_corrupt_image(client):
     )
     assert r.status_code == 422
     assert "corrupt" in r.json()["detail"].lower()
-
-
-# ── Content-Length guard ──────────────────────────────────────────────────────
 
 
 def test_predict_422_when_content_length_exceeds_limit(client, sample_image_bytes):
@@ -123,9 +109,6 @@ def test_predict_passes_when_content_length_within_limit(client, sample_image_by
         headers={"Content-Length": str(len(sample_image_bytes))},
     )
     assert r.status_code == 200
-
-
-# ── Rate limiting ─────────────────────────────────────────────────────────────
 
 
 def test_predict_429_when_rate_limit_exceeded(client, sample_image_bytes):
@@ -154,9 +137,6 @@ def test_feedback_401_when_api_key_required_and_missing(client):
     with patch("app.dependencies._API_KEY", "secret-key"):
         r = client.post("/feedback", json={"request_id": "test", "detections": []})
     assert r.status_code == 401
-
-
-# ── HTTP security headers ─────────────────────────────────────────────────────
 
 
 def test_security_headers_present(client, sample_image_bytes):

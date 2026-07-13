@@ -1,21 +1,3 @@
-"""
-Stage: Promote Staging → Production with mAP50 regression guard + auto-rollback.
-
-Flow:
-    1. Compare Staging vs Production mAP50.
-    2. Promote if regression ≤ REGRESSION_TOLERANCE (1%).
-    3. Optionally verify the live serving endpoint via /health polling.
-    4. If verification fails, roll back to the previous Production version.
-
-Usage:
-    python -m pipeline.stage_promote
-
-Environment variables:
-    Required: DAGSHUB_USERNAME, DAGSHUB_REPO, DAGSHUB_TOKEN
-    Optional: SERVING_URL   — if set, health check + auto-rollback are performed
-              VERIFY_SECS   — seconds to poll after promotion (default: 60)
-"""
-
 import os
 import sys
 import time
@@ -25,6 +7,7 @@ import mlflow
 import requests
 from mlflow.tracking import MlflowClient
 
+from app.constant import MODEL_NAME_FP32, MODEL_NAME_INT8, MODEL_NAME_TFLITE
 from app.utils.telegram import notify
 from core.logger import get_logger
 
@@ -35,9 +18,9 @@ MAP_METRIC_KEY = "mAP50"
 HEALTH_ERROR_THRESHOLD = 0.05  # rollback if error rate > 5%
 
 MODELS = [
-    "rescuevision-onnx-fp32",
-    "rescuevision-onnx-int8",
-    "rescuevision-tflite-int8",
+    MODEL_NAME_FP32,
+    MODEL_NAME_INT8,
+    MODEL_NAME_TFLITE,
 ]
 
 
@@ -58,7 +41,7 @@ def _get_map50(client: MlflowClient, run_id: str | None) -> float | None:
     try:
         run = client.get_run(run_id)
         return run.data.metrics.get(MAP_METRIC_KEY)
-    except Exception as exc:
+    except mlflow.exceptions.MlflowException as exc:
         log.warning("failed_to_fetch_run_metrics", extra={"run_id": run_id, "error": str(exc)})
         return None
 
@@ -77,7 +60,7 @@ def _rollback(client: MlflowClient, name: str, previous_version: str) -> None:
             name, previous_version, "Production", archive_existing_versions=True
         )
         log.info("rollback_complete", extra={"model": name, "restored_version": previous_version})
-    except Exception as exc:
+    except mlflow.exceptions.MlflowException as exc:
         log.error("rollback_failed", extra={"model": name, "error": str(exc)})
 
 
@@ -98,7 +81,7 @@ def _verify_serving(url: str, verify_secs: int) -> bool:
             if r.status_code != HTTPStatus.OK:
                 failures += 1
                 log.warning("health_check_failed", extra={"status": r.status_code})
-        except Exception as exc:
+        except requests.exceptions.RequestException as exc:
             total += 1
             failures += 1
             log.warning("health_check_error", extra={"error": str(exc)})

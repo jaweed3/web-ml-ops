@@ -19,8 +19,6 @@ ARTIFACTS = {
 EXPECTED_OUTPUT_SHAPE = (1, 5, 2100)
 DUMMY_INPUT = np.zeros((1, 3, 320, 320), dtype=np.float32)
 
-# ── Existence ─────────────────────────────────────────────────────────────────
-
 
 @pytest.mark.parametrize("key,path", ARTIFACTS.items())
 def test_artifact_exists(key, path):
@@ -31,9 +29,6 @@ def test_artifact_exists(key, path):
 def test_artifact_not_empty(key, path):
     size_mb = path.stat().st_size / 1_000_000
     assert size_mb > 0.5, f"Artifact [{key}] suspiciously small: {size_mb:.2f} MB"
-
-
-# ── Loadability ───────────────────────────────────────────────────────────────
 
 
 def test_onnx_fp32_loadable():
@@ -58,9 +53,6 @@ def test_tflite_loadable():
     interp = tf.lite.Interpreter(model_path=str(tflite_path))
     interp.allocate_tensors()
     assert interp is not None
-
-
-# ── Input / output shapes ─────────────────────────────────────────────────────
 
 
 def test_onnx_fp32_input_shape():
@@ -100,9 +92,6 @@ def test_fp32_and_int8_output_shapes_match():
     assert out_fp32 == out_int8, f"Shape mismatch: FP32={out_fp32} INT8={out_int8}"
 
 
-# ── Inference sanity ──────────────────────────────────────────────────────────
-
-
 def test_onnx_fp32_output_is_finite():
     """Output should not contain NaN or Inf."""
     ort = pytest.importorskip("onnxruntime")
@@ -116,9 +105,6 @@ def test_onnx_int8_output_is_finite():
     sess = ort.InferenceSession(str(ARTIFACTS["onnx_int8"]), providers=["CPUExecutionProvider"])
     out = sess.run(None, {sess.get_inputs()[0].name: DUMMY_INPUT})[0]
     assert np.all(np.isfinite(out)), "INT8 output contains NaN or Inf"
-
-
-# ── Size relationship ─────────────────────────────────────────────────────────
 
 
 def test_int8_smaller_than_fp32():

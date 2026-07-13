@@ -18,9 +18,6 @@ def make_output(n_boxes: int = 1, conf: float = 0.9) -> list[np.ndarray]:
 PP = DetectionPostprocessor()
 
 
-# ── Basic thresholding ────────────────────────────────────────────────────────
-
-
 def test_detections_returned_above_threshold():
     dets = PP.run(make_output(n_boxes=3, conf=0.9))
     assert len(dets) > 0
@@ -34,9 +31,6 @@ def test_no_detections_below_threshold():
 def test_empty_output_returns_empty_list():
     dets = PP.run(make_output(n_boxes=0, conf=0.9))
     assert dets == []
-
-
-# ── Detection schema ──────────────────────────────────────────────────────────
 
 
 def test_detection_has_required_keys():
@@ -64,16 +58,10 @@ def test_class_id_is_zero():
     assert dets[0]["class_id"] == 0
 
 
-# ── Confidence precision ───────────────────────────────────────────────────────
-
-
 def test_confidence_rounded_to_4_decimal_places():
     dets = PP.run(make_output(n_boxes=1, conf=0.876543))
     if dets:
         assert len(str(dets[0]["confidence"]).split(".")[-1]) <= 4
-
-
-# ── max_detections cap ────────────────────────────────────────────────────────
 
 
 def test_max_detections_cap():

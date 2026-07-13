@@ -1,19 +1,3 @@
-"""
-Appends one JSON record per inference to artifacts/predictions.jsonl.
-
-Thread-safe: writes are protected by a lock since PredictionPipeline.run()
-is called from a thread-pool executor.
-
-Format (one JSON object per line):
-    {
-        "ts": "2026-04-22T10:00:00.123456Z",
-        "request_id": "a1b2c3d4",
-        "model_version": "3",
-        "n_detections": 2,
-        "inference_time_ms": 9.4
-    }
-"""
-
 import json
 import threading
 from datetime import datetime, timezone
@@ -38,12 +22,6 @@ def log_prediction(
     inference_time_ms: float,
     log_path: Path = _DEFAULT_PATH,
 ) -> None:
-    """
-    Append a prediction record to the JSONL log file.
-
-    Silently swallows I/O errors so a logging failure never takes down
-    the serving path.
-    """
     record = {
         "ts": datetime.now(timezone.utc).isoformat(),
         "request_id": request_id,

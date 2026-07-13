@@ -7,8 +7,6 @@ DATA_ROOT = Path(".")
 TRAIN_DIR = DATA_ROOT / "train_data"
 TEST_DIR = DATA_ROOT / "test_data"
 
-# ── Structure ─────────────────────────────────────────────────────────────────
-
 
 def test_required_dirs_exist():
     required = [
@@ -38,9 +36,6 @@ def test_test_set_not_empty():
     assert len(imgs) > 0, "No test images found — check DVC pull"
 
 
-# ── Image / label alignment ───────────────────────────────────────────────────
-
-
 def test_no_image_label_mismatch():
     imgs = sorted((TRAIN_DIR / "images/train").glob("*.jpg"))
     lbls = sorted((TRAIN_DIR / "labels/train").glob("*.txt"))
@@ -53,9 +48,6 @@ def test_every_image_has_label():
     lbl_stems = {p.stem for p in (TRAIN_DIR / "labels/train").glob("*.txt")}
     missing = img_stems - lbl_stems
     assert not missing, f"Images without labels: {sorted(missing)[:5]}"
-
-
-# ── Annotation format (YOLO) ──────────────────────────────────────────────────
 
 
 def test_yolo_annotation_format_valid():
@@ -97,9 +89,6 @@ def test_only_person_class_present():
                 non_zero.append(f"{label_path.name}: class {parts[0]}")
 
     assert not non_zero, "Non-person class ids found (expected 0 only):\n" + "\n".join(non_zero[:5])
-
-
-# ── Image integrity ───────────────────────────────────────────────────────────
 
 
 def test_sample_images_not_corrupt():

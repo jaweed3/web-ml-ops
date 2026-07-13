@@ -118,7 +118,8 @@ def dvc_add(path: Path) -> None:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Create dataset subset for Mac Mini training")
     parser.add_argument(
-        "--src", default="data/dataset",
+        "--src",
+        default="data/dataset",
         help="Root dataset directory (contains train_data/ and test_data/)",
     )
     parser.add_argument("--dst", default="data/coco_person_subset", help="Subset output directory")

@@ -70,21 +70,15 @@ INPUT_DRIFT_SCORE = Gauge(
 )
 
 
-# ── Helper ────────────────────────────────────────────────────────────────────
-
-
 def record_model_ready(version: str, fmt: str) -> None:
-    """Call once at startup after the model session is initialized."""
     MODEL_INFO.info({"version": version, "format": fmt})
     STARTUP_TIMESTAMP.set(time.time())
 
 
 def record_inference(latency_ms: float, n_detections: int) -> None:
-    """Call from PredictionPipeline after each successful inference."""
     INFERENCE_LATENCY.observe(latency_ms / 1000)
     DETECTIONS_PER_REQUEST.observe(n_detections)
 
 
 def record_drift(score: float) -> None:
-    """Call from PredictionPipeline after each inference."""
     INPUT_DRIFT_SCORE.set(score)

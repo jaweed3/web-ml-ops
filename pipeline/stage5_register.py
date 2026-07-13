@@ -3,6 +3,7 @@ import json
 import subprocess
 from pathlib import Path
 
+from app.constant import EXPERIMENT_NAME, MODEL_NAME_FP32, MODEL_NAME_INT8, MODEL_NAME_TFLITE
 from core.config import is_debug_mode
 from core.logger import get_logger
 from core.mlflow_client import init_mlflow, register_model
@@ -71,7 +72,7 @@ if __name__ == "__main__":
         raise SystemExit(1)
 
     # Open MLflow run only after gate passes — avoids orphaned runs on failure
-    init_mlflow(experiment_name="rescuevision-yolov8n")
+    init_mlflow(experiment_name=EXPERIMENT_NAME)
 
     git_hash = get_git_hash()
     dataset_hash = load_dataset_hash()
@@ -83,11 +84,11 @@ if __name__ == "__main__":
     }
 
     artifacts = [
-        ("artifacts/model.onnx", "rescuevision-onnx-fp32"),
-        ("artifacts/model_int8.onnx", "rescuevision-onnx-int8"),
+        ("artifacts/model.onnx", MODEL_NAME_FP32),
+        ("artifacts/model_int8.onnx", MODEL_NAME_INT8),
     ]
     if Path("artifacts/model_int8.tflite").exists():
-        artifacts.append(("artifacts/model_int8.tflite", "rescuevision-tflite-int8"))
+        artifacts.append(("artifacts/model_int8.tflite", MODEL_NAME_TFLITE))
     # Log per-class AP50 breakdown to MLflow tags for the INT8 model
     int8_result = next((r for r in report["results"] if r["format"] == "onnx_int8"), None)
     if int8_result:

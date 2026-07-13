@@ -6,13 +6,6 @@ from PIL import Image
 
 
 def generate_dummy_data(data_dir: str, num_samples: int = 10, img_size: int = 640):
-    """
-    Generate dummy data mirroring the real dataset structure:
-      <data_dir>/train_data/images/{train,val}/
-      <data_dir>/train_data/labels/{train,val}/
-      <data_dir>/test_data/images/
-      <data_dir>/test_data/labels/
-    """
     path = Path(data_dir)
 
     for split in ["train", "val"]:

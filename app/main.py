@@ -15,7 +15,7 @@ from slowapi.middleware import SlowAPIMiddleware
 from app.components.metrics import record_model_ready
 from app.components.model_loader import ModelLoader
 from app.components.runner import ONNXRunner
-from app.config.configuration import ConfigurationManager
+from app.config.configuration import load_serve_config
 from app.dependencies import limiter
 from app.middleware.request_logger import RequestLoggerMiddleware
 from app.middleware.security import SecurityHeadersMiddleware
@@ -30,12 +30,12 @@ log = get_logger("main")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # ── Startup ───────────────────────────────────────────────────────────────
-    cm = ConfigurationManager()
+    cfg = load_serve_config()
 
-    dagshub_cfg = cm.get_dagshub_config()
-    model_cfg = cm.get_model_registry_config()
-    inf_cfg = cm.get_inference_config()
-    cache_cfg = cm.get_cache_config()
+    dagshub_cfg = cfg.dagshub
+    model_cfg = cfg.model
+    inf_cfg = cfg.inference
+    cache_cfg = cfg.cache
 
     log.info("server_starting", model_name=model_cfg.name, version=model_cfg.version)
 
@@ -49,7 +49,7 @@ async def lifespan(app: FastAPI):
 
     # Optional shadow (candidate) runner — same model registry, different version
     shadow_runner: ONNXRunner | None = None
-    candidate_cfg = cm.get_candidate_model_config()
+    candidate_cfg = cfg.candidate_model
     if candidate_cfg is not None:
         try:
             c_loader = ModelLoader(dagshub_cfg, candidate_cfg, cache_cfg)
@@ -61,7 +61,10 @@ async def lifespan(app: FastAPI):
 
     drift = DriftDetector()
     pipeline = PredictionPipeline(
-        runner, inf_cfg, drift_detector=drift, shadow_runner=shadow_runner,
+        runner,
+        inf_cfg,
+        drift_detector=drift,
+        shadow_runner=shadow_runner,
     )
 
     # Warm up: one dummy inference so the first real request is not cold
@@ -102,7 +105,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
 app.add_middleware(RequestLoggerMiddleware)
 
-# ponytail: CORS origins from env var, comma-separated. Empty = no cross-origin.
+# CORS origins from env var, comma-separated. Empty = no cross-origin.
 _cors = os.environ.get("CORS_ORIGINS", "")
 if _cors:
     app.add_middleware(

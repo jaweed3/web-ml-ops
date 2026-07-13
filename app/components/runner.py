@@ -12,13 +12,6 @@ log = get_logger("components.runner")
 
 
 class ONNXRunner:
-    """
-    Wraps an ONNX Runtime InferenceSession.
-
-    Session initialization is expensive — it happens once when the object is
-    constructed (at server startup). Inference calls are thread-safe.
-    """
-
     def __init__(self, model_path: Path, version: str, n_threads: int = ORT_INTRA_THREADS) -> None:
         self.version = version
         self.loaded_at: float | None = None

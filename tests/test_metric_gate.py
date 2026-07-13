@@ -17,9 +17,6 @@ def _report(fp32: float | None, int8: float | None) -> dict:
     return {"n_samples": 100, "results": results}
 
 
-# ── Gate passes ───────────────────────────────────────────────────────────────
-
-
 def test_gate_passes_when_ratio_above_threshold():
     assert metric_gate(_report(fp32=0.80, int8=0.78)) is True  # ratio=0.975
 
@@ -33,9 +30,6 @@ def test_gate_passes_when_models_identical():
     assert metric_gate(_report(fp32=0.70, int8=0.70)) is True  # ratio=1.0
 
 
-# ── Gate fails ────────────────────────────────────────────────────────────────
-
-
 def test_gate_fails_when_ratio_below_threshold():
     assert metric_gate(_report(fp32=0.80, int8=0.50)) is False  # ratio=0.625
 
@@ -43,9 +37,6 @@ def test_gate_fails_when_ratio_below_threshold():
 def test_gate_fails_just_below_threshold():
     int8 = 0.80 * (DEGRADATION_THRESHOLD - 0.001)
     assert metric_gate(_report(fp32=0.80, int8=int8)) is False
-
-
-# ── Missing metrics → skip gate (return True) ─────────────────────────────────
 
 
 def test_gate_skips_when_fp32_missing():
@@ -59,9 +50,6 @@ def test_gate_skips_when_int8_missing():
 
 def test_gate_skips_when_both_missing():
     assert metric_gate(_report(fp32=None, int8=None)) is True
-
-
-# ── Edge cases ────────────────────────────────────────────────────────────────
 
 
 def test_gate_passes_when_fp32_is_zero():

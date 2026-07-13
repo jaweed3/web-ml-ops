@@ -2,6 +2,7 @@ import os
 import time
 from pathlib import Path
 
+from app.constant import EXPERIMENT_NAME
 from core.config import is_subset_mode, load_config
 from core.logger import get_logger
 from core.mlflow_client import init_mlflow, log_artifact, log_metrics, log_params
@@ -12,7 +13,7 @@ log = get_logger("stage2_train")
 def train(cfg) -> str:
     from ultralytics import YOLO
 
-    init_mlflow(experiment_name="rescuevision-yolov8n")
+    init_mlflow(experiment_name=EXPERIMENT_NAME)
 
     log.info(
         "training_start",
@@ -70,7 +71,6 @@ def train(cfg) -> str:
     last = weights_dir / "last.pt"
     checkpoint_path = str(best if best.exists() else last)
 
-    # Write path so downstream stages can find it without guessing
     Path("artifacts").mkdir(exist_ok=True)
     Path("artifacts/checkpoint_path.txt").write_text(checkpoint_path)
 

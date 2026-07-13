@@ -4,6 +4,7 @@ from pathlib import Path
 from onnxruntime.quantization import QuantType, quantize_dynamic
 from ultralytics import YOLO
 
+from app.constant import EXPERIMENT_NAME
 from core.config import is_subset_mode, load_config
 from core.logger import get_logger
 from core.mlflow_client import init_mlflow
@@ -39,7 +40,7 @@ def export_onnx_int8(fp32_path: Path) -> Path:
     return dst
 
 
-def export_tflite_int8(checkpoint: str, imgsz: int) -> Path | None:
+def export_tflite_int8(checkpoint: str, imgsz: int, data_yaml: str) -> Path | None:
     """
     TFLite export requires TensorFlow (heavy dep, GPU machine only).
     Skips gracefully if TF is not installed so the ONNX artifacts
@@ -58,10 +59,10 @@ def export_tflite_int8(checkpoint: str, imgsz: int) -> Path | None:
 
     model = YOLO(checkpoint)
     try:
-        data_yaml = cfg.data.subset_yaml if is_subset_mode() else cfg.data.yaml
         model.export(format="tflite", imgsz=imgsz, int8=True, data=data_yaml)
-    except AssertionError:
-        pass
+    except Exception as exc:
+        log.warning("tflite_export_failed", extra={"error": str(exc)})
+        return None
 
     saved_model_dir = Path(checkpoint).parent / "best_saved_model"
     candidates = list(saved_model_dir.glob("best_full_integer_quant*.tflite"))
@@ -85,7 +86,7 @@ def export_tflite_int8(checkpoint: str, imgsz: int) -> Path | None:
 
 
 if __name__ == "__main__":
-    init_mlflow(experiment_name="rescuevision-yolov8n")
+    init_mlflow(experiment_name=EXPERIMENT_NAME)
     cfg = load_config()
     checkpoint_file = Path("artifacts/checkpoint_path.txt")
     if checkpoint_file.exists():
@@ -95,9 +96,10 @@ if __name__ == "__main__":
         best = Path("runs/detect/runs/train/weights/best.pt")
         last = Path("runs/detect/runs/train/weights/last.pt")
         checkpoint = str(best if best.exists() else last)
+    data_yaml = cfg.data.subset_yaml if is_subset_mode() else cfg.data.yaml
     fp32 = export_onnx_fp32(checkpoint, cfg.train.imgsz)
     export_onnx_int8(fp32)
-    tflite = export_tflite_int8(checkpoint, cfg.train.imgsz)
+    tflite = export_tflite_int8(checkpoint, cfg.train.imgsz, data_yaml)
     mlflow_log("artifacts/model.onnx")
     mlflow_log("artifacts/model_int8.onnx")
     if tflite:

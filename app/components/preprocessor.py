@@ -9,22 +9,6 @@ log = get_logger("components.preprocessor")
 
 
 class ImagePreprocessor:
-    """
-    Converts raw image bytes into a normalized float32 tensor ready for
-    ONNX Runtime inference, also returning visual statistics for drift
-    monitoring.
-
-    Steps:
-    1. Decode image bytes (JPEG / PNG / WebP).
-    2. Letterbox-resize to *imgsz* x *imgsz* preserving aspect ratio.
-    3. BGR → RGB.
-    4. Normalize pixel values to [0, 1].
-    5. HWC → NCHW layout, add batch dim.
-
-    Returns ``(tensor, stats)`` where *stats* is a dict of brightness,
-    contrast, and entropy of the original decoded image.
-    """
-
     def __init__(self, imgsz: int = DEFAULT_IMGSZ) -> None:
         self.imgsz = imgsz
 
@@ -39,8 +23,6 @@ class ImagePreprocessor:
         blob = np.ascontiguousarray(img)
         log.info("preprocess_ok", shape=list(blob.shape), dtype=str(blob.dtype))
         return blob, stats
-
-    # ── private ───────────────────────────────────────────────────────────────
 
     def _decode(self, data: bytes) -> np.ndarray:
         if not data:

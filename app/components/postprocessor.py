@@ -16,19 +16,7 @@ log = get_logger("components.postprocessor")
 
 
 class DetectionPostprocessor:
-    """
-    Converts raw YOLOv8 ONNX output into structured detection dicts.
-
-    YOLOv8 output shape: ``[1, 5, 2100]``
-    where the 5 channels are ``[cx, cy, w, h, confidence]`` (normalized 0-1).
-
-    Steps:
-    1. Transpose output to ``[8400, 5]``.
-    2. Filter boxes below *conf_threshold*.
-    3. Convert centre-format boxes to pixel-space xyxy.
-    4. Run NMS.
-    5. Build structured detection dicts.
-    """
+    """Converts raw YOLOv8 ONNX output into structured detection dicts."""
 
     def __init__(
         self,
@@ -42,20 +30,7 @@ class DetectionPostprocessor:
         self.iou_threshold = iou_threshold
         self.max_detections = max_detections
 
-    # ── public ────────────────────────────────────────────────────────────────
-
     def run(self, raw_output: list[np.ndarray]) -> list[dict[str, Any]]:
-        """
-        Parameters
-        ----------
-        raw_output : list[np.ndarray]
-            Direct output from ``ort.InferenceSession.run()``.
-
-        Returns
-        -------
-        list[dict]
-            Each element has keys: class_id, class_name, confidence, bbox.
-        """
         output = raw_output[0][0].T  # [8400, 5]
 
         boxes = output[:, :4]  # cx cy w h (normalised)
@@ -82,8 +57,6 @@ class DetectionPostprocessor:
         ]
         log.info("postprocess_ok", n_detections=len(detections))
         return detections
-
-    # ── private ───────────────────────────────────────────────────────────────
 
     def _cxcywh_to_xyxy(self, boxes: np.ndarray) -> np.ndarray:
         cx, cy, w, h = boxes[:, 0], boxes[:, 1], boxes[:, 2], boxes[:, 3]

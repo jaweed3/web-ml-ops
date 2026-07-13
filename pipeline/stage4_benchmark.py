@@ -7,6 +7,7 @@ import numpy as np
 import onnxruntime as ort
 from ultralytics.models import YOLO
 
+from app.constant import EXPERIMENT_NAME
 from core.config import is_subset_mode, load_config
 from core.logger import get_logger
 from core.mlflow_client import init_mlflow, log_artifact, log_metrics
@@ -63,7 +64,7 @@ def benchmark_onnx(
 
 
 if __name__ == "__main__":
-    init_mlflow(experiment_name="rescuevision-yolov8n")
+    init_mlflow(experiment_name=EXPERIMENT_NAME)
     cfg = load_config()
     data_dir = cfg.data.subset_dir if is_subset_mode() else cfg.data.dir
     data_yaml = cfg.data.subset_yaml if is_subset_mode() else cfg.data.yaml
