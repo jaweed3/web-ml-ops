@@ -122,8 +122,6 @@ dvc repro
 
 ## Monitoring
 
-![Grafana Dashboard](docs/grafana-ui.png)
-
 Prometheus scrapes inference metrics (request rate, latency histogram, drift score, detection count) from the FastAPI server every 15 seconds. Pre-configured alert rules cover:
 
 - **High latency** — p95 inference > 150ms or request duration > 500ms
@@ -131,8 +129,6 @@ Prometheus scrapes inference metrics (request rate, latency histogram, drift sco
 - **Drift** — input drift score > 3.0
 - **Traffic drop** — zero requests for 5 minutes
 - **Detection anomaly** — detection rate drops >70% vs previous day
-
-![Prometheus UI](docs/prometheus-ui.png)
 
 ---
 
