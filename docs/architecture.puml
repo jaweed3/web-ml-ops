@@ -1,0 +1,69 @@
+@startuml
+skinparam backgroundColor white
+skinparam roundcorner 10
+skinparam shadowing false
+skinparam defaultFontSize 12
+skinparam nodesep 50
+skinparam ranksep 35
+skinparam rectangle {
+  BorderThickness 2
+}
+
+rectangle "DVC Pipeline" as pipeline #EFF6FF {
+  rectangle "1. Data" as s1 #DBEAFE
+  rectangle "2. Train" as s2 #FEF3C7
+  rectangle "3. Export" as s3 #FEF3C7
+  rectangle "4. Benchmark" as s4 #FEF3C7
+  rectangle "5. Register" as s5 #D1FAE5
+}
+
+rectangle "MLflow Registry" as registry #FEF3C7 {
+  rectangle "Staging" as staging
+  rectangle "Production" as prod
+}
+
+rectangle "FastAPI" as server #D1FAE5 {
+  rectangle "Preprocessor" as pre
+  rectangle "ONNX Runtime" as onnx
+  rectangle "Postprocessor" as post
+  rectangle "Drift Detector" as drift
+  rectangle "Shadow Runner" as shadow
+  rectangle "Prediction Logger" as plog
+}
+
+rectangle "Monitoring" as obs #FCE7F3 {
+  rectangle "Prometheus" as prom
+  rectangle "Grafana" as grafana
+}
+
+rectangle "CI/CD" as cicd #DBEAFE {
+  rectangle "quality" as ci_q
+  rectangle "test" as ci_t
+  rectangle "staging" as ci_ps
+  rectangle "docker" as ci_db
+  rectangle "promote" as ci_pp
+}
+
+s1 -right-> s2
+s2 -right-> s3
+s3 -right-> s4
+s4 -right-> s5
+
+s5 -down-> staging
+staging -down-> prod : "manual approve"
+
+prod -down-> onnx : "load model"
+pre -right-> onnx
+onnx -right-> post
+post -down-> plog
+pre -down-> drift
+
+server -down-> prom : "scrape"
+prom -right-> grafana
+
+ci_q -right-> ci_t
+ci_t -right-> ci_ps
+ci_ps -right-> ci_db
+ci_db -right-> ci_pp
+
+@enduml
